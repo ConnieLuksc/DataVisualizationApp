@@ -112,36 +112,35 @@ server <- function(input, output, session) {
                 inputId = "main_tabs",
                 tabPanel(
                     "UMAP",
-                    fluidRow(
-                    column(
-                        width = 8,
-                        plotOutput(outputId = 'umap'),
-                        downloadButton("download_umap", "Download UMAP")
+                    tabPanel("UMAP Plot",
+                        fluidRow(
+                            column(
+                                width = 8,
+                                plotOutput(outputId = 'umap'),
+                                downloadButton("download_umap", "Download UMAP")
+                            ),
+                            column(
+                                width = 4,
+                                selectizeInput("metadata_col", 
+                                    "Metadata Column", 
+                                    colnames(obj@meta.data)
+                                )
+                            )
+                        ),
+                        style = "height: 90%; width: 95%; padding-top: 5%;"
                     ),
-                    column(
-                        width = 4,
-                        selectizeInput("metadata_col", 
-                            "Metadata Column", 
-                            colnames(obj@meta.data)
-                        )
+                    tabPanel("Violin Plot",
+                        fluidRow(
+                            column(
+                                width = 12,
+                                plotOutput(outputId = 'violinPlot')  # Create an output for the violin plot
+                            )
+                        ),
+                        style = "height: 90%; width: 95%; padding-top: 5%;"
                     )
-                    ),
-                    style = "height: 90%; width: 95%; padding-top: 5%;"
+
                 ),
                 select = TRUE
-            )
-            insertTab(
-                inputId = "main_tabs",
-                tabPanel(
-                    "Violin Plot",
-                    fluidRow(
-                        column(
-                            width = 12,
-                            plotOutput(outputId = 'violinPlot')
-                        )
-                    ),
-                    style = "height: 90%; width: 95%; padding-top: 5%;"
-                )
             )
             insertTab(
                 inputId = "main_tabs",
