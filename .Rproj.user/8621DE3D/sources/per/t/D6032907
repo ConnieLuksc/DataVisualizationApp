@@ -1,9 +1,9 @@
 {
     "id": "D6032907",
-    "path": "~/School/NU/2024Spring/CE499/DataVisualizationApp/app.R",
+    "path": "~/School/NU/2024Spring/CE499/scRNAseq-App/app.R",
     "project_path": "app.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "2102352130",
     "contents": "",
     "dirty": false,
     "created": 1705960623627.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "50,34",
-        "scrollLine": "20"
+        "cursorPosition": "10,0",
+        "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1705960618,
+    "lastKnownWriteTime": 1706042143,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1705960618,
+    "last_content_update": 1706042143902,
     "read_only": false,
     "read_only_alternatives": []
 }

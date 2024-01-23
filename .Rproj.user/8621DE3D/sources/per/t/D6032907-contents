@@ -9,7 +9,7 @@
 
 library(shiny)
 
-# Define UI for application that draws a histogram
+# front end
 ui <- fluidPage(
 
     # Application title
@@ -32,7 +32,7 @@ ui <- fluidPage(
     )
 )
 
-# Define server logic required to draw a histogram
+# back end
 server <- function(input, output) {
 
     output$distPlot <- renderPlot({
@@ -47,5 +47,5 @@ server <- function(input, output) {
     })
 }
 
-# Run the application 
+# Function to run app
 shinyApp(ui = ui, server = server)
