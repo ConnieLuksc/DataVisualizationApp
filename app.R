@@ -77,6 +77,11 @@ server <- function(input, output, session) {
                     create_metadata_UMAP(obj, input$metadata_col)
                 }
             })
+            output$violinPlot <- renderPlot({
+                if (!is.null(obj)) {
+                    VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+                }
+            })
 
             output$featurePlot <- renderPlot({
                 if (!is.null(input$gene)) {
@@ -124,6 +129,19 @@ server <- function(input, output, session) {
                     style = "height: 90%; width: 95%; padding-top: 5%;"
                 ),
                 select = TRUE
+            )
+            insertTab(
+                inputId = "main_tabs",
+                tabPanel(
+                    "Violin Plot",
+                    fluidRow(
+                        column(
+                            width = 12,
+                            plotOutput(outputId = 'violinPlot')
+                        )
+                    ),
+                    style = "height: 90%; width: 95%; padding-top: 5%;"
+                )
             )
             insertTab(
                 inputId = "main_tabs",
