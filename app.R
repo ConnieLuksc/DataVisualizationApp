@@ -89,6 +89,12 @@ server <- function(input, output, session) {
                 }
             })
 
+            output$violinPlotGene <- renderPlot({
+                if (!is.null(input$geneViolin)) {
+                    create_violin_plot(obj, input$geneViolin)
+                }
+            })
+
             output$downloadFeaturePlot <- downloadHandler(
                 filename = function(){
                     paste0(input$gene, '_feature_plot', '.png')
@@ -155,6 +161,27 @@ server <- function(input, output, session) {
                     column(
                         width = 4,
                         selectizeInput("gene", 
+                            "Genes", 
+                            rownames(obj)
+                        )
+                    )
+                    ),
+                    style = "height: 90%; width: 95%; padding-top: 5%;"
+                )
+            )
+            insertTab(
+                inputId = "main_tabs",
+                tabPanel(
+                    "Violin Plot",
+                    fluidRow(
+                    column(
+                        width = 8,
+                        plotOutput(outputId = 'violinPlotGene'),
+                        downloadButton("downloadViolinPlot", "Download Violin Plot")
+                    ),
+                    column(
+                        width = 4,
+                        selectizeInput("geneViolin", 
                             "Genes", 
                             rownames(obj)
                         )

@@ -74,3 +74,10 @@ create_feature_plot <- function(obj, gene) {
     }
     return(FP)
 }
+
+create_violin_plot <- function(obj, gene) {
+    if (gene %in% rownames(obj)) {
+        VP <- VlnPlot(obj, features = gene, pt.size = 0.001, combine = FALSE)
+    }
+    return(VP)
+}
