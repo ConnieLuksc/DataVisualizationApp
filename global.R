@@ -12,6 +12,10 @@ library(shinybusy)
 library(glue)
 library(markdown)
 library(ggthemes)
+library(httr)
+library(jsonlite)
+library(shinyjs)
+
 
 
 # Read in file and perform validation.
