@@ -14,12 +14,6 @@ shinyjs.FB = function() {
         measurementId: 'G-HPR83GVV0F'
     };
     firebase.initializeApp(firebaseConfig);
-    var database = firebase.database();
-    var id = database.ref('test').push().key;
-    var myData = 'hello';
-    database.ref('test/' + id + '/').update({myData}).then(function() {
-        console.log('myData sent!');
-    });
 }";
 
 
@@ -89,6 +83,42 @@ server <- function(input, output, session) {
         show_modal_spinner(text = "Preparing plots...")
 
         obj <- load_seurat_obj(input$file$datapath)
+        print(class(obj))
+        print(obj)
+
+        if (!is.null(obj) && class(obj) == "Seurat") {
+                print("Seurat object is valid")
+                metadata <- obj@meta.data
+                expression_data <- GetAssayData(obj, assay = "RNA", layer = "counts")
+
+                # Optionally, select a subset of expression data to reduce size
+                # e.g., expression_data <- expression_data[1:100, 1:50]
+
+                # Convert dgCMatrix to regular matrix
+                if (class(expression_data) == "dgCMatrix") {
+                    expression_data <- as.matrix(expression_data)
+                }
+
+                # Convert the extracted data to JSON
+                json_metadata <- jsonlite::toJSON(metadata[1:50, ], auto_unbox = TRUE)  # sending only a subset
+                json_expression_data <- jsonlite::toJSON(expression_data[1:100, 1:50], auto_unbox = TRUE)  # sending only a subset
+
+                # Combine the JSON strings
+                combined_json <- jsonlite::toJSON(list(metadata = json_metadata, expression_data = json_expression_data), auto_unbox = TRUE)
+
+                # Save JSON to Firebase
+                firebase_url <- "https://scrnaseq-app-default-rtdb.firebaseio.com/data.json"
+                response <- httr::POST(url = firebase_url, body = combined_json, encode = "json")
+                if (httr::http_status(response)$category == "success") {
+                    print("Data sent successfully")
+                } else {
+                    print(paste("Failed to send data:", httr::http_status(response)$message))
+                }
+
+            } else {
+                showNotification("Invalid or missing Seurat object", type = "error")
+            }
+
         if (is.vector(obj)){
             showModal(modalDialog(
                 title = "Error with file",
@@ -233,28 +263,25 @@ server <- function(input, output, session) {
     })
 
     observeEvent(input$save_to_firebase, {
-        shinyjs::js$FB()  # Correct way to call the JavaScript function
-    })
+    if (exists(obj)) {
+        # Convert the R object to JSON
+        json_data <- jsonlite::toJSON(obj, auto_unbox = TRUE)
 
-        # if (exists("obj")) {
-        #     json_data <- toJSON(obj)
-        #     firebase_url <- "https://scrnaseq-app-default-rtdb.firebaseio.com/data.json" # replace with your URL
+        # Save JSON to Firebase (modify with appropriate Firebase URL)
+        firebase_url <- "https://scrnaseq-app-default-rtdb.firebaseio.com/data.json"
+        response <- httr::POST(url = firebase_url, body = json_data, encode = "json")
 
-        #     response <- PUT(
-        #       url = firebase_url,
-        #       body = json_data,
-        #       encode = "json"
-        #     )
+        if (httr::http_status(response)$category == "success") {
+            showNotification("Data saved to Firebase successfully!", type = "message")
+        } else {
+            showNotification("Failed to save data to Firebase", type = "error")
+        }
+    } else {
+        showNotification("No data available to save", type = "error")
+    }
+})
 
-        #     if (http_status(response)$category == "success") {
-        #         showNotification("Data saved to Firebase successfully!", type = "message")
-        #     } else {
-        #         showNotification("Failed to save data to Firebase", type = "error")
-        #     }
-        # } else {
-        #     showNotification("No data available to save", type = "error")
-        # }
-    # })
+
 
     observeEvent(input$load_from_firebase, {
         firebase_url <- "https://scrnaseq-app-default-rtdb.firebaseio.com/data.json" # replace with your URL
