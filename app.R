@@ -74,10 +74,10 @@ ui <- dashboardPage(
                 div(
                     # upload file
                     fileInput("file", "Upload File", multiple=TRUE, accept=c('.rds')),
-                    # reset button
-                    actionButton("reset", "Reset", icon = icon("undo"), class = "reset-btn"),
-                    # run button
-                    actionButton("run", "Run", icon = icon("play"), class = "run-btn")
+                    actionButton("reset", "Reset", icon = icon("undo"), style = "color: #fff; background-color: #dc3545; width: 87.25%"),
+                    actionButton("run", "Run", icon = icon("play"), style = "color: #fff; background-color: #28a745; width: 87.25%"),
+                    numericInput("pc", "PC", value = NA),
+                    numericInput("resolution", "Resolution", value = NA, step = 0.1),
                     )
                 )
         )
@@ -109,12 +109,18 @@ server <- function(input, output, session) {
     )
     # Disable Run by default
     shinyjs::disable("run")
+    shinyjs::disable("pc")
+    shinyjs::disable("resolution")
 
     observe({
     if(is.null(input$file) != TRUE) {
         shinyjs::enable("run")
+        shinyjs::enable("pc")
+        shinyjs::enable("resolution")
     } else {
         shinyjs::disable("run")
+        shinyjs::disable("pc")
+        shinyjs::disable("resolution")
     }
     })
 
@@ -156,21 +162,29 @@ server <- function(input, output, session) {
                     paste(unlist(values$obj), collapse = "<br><br>"))
             ))
             shinyjs::enable("run")
+            
 
         } else {
             # umap
             output$umap <- renderPlot({
-                if (!is.null(input$metadata_col)) {
-                    create_metadata_UMAP(values$obj, input$metadata_col)
+                if (!is.na(input$pc) && !is.na(input$resolution)) {
+                    show_modal_spinner(text = "Preparing plots...")
+                    create_metadata_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values)
+                }else{
+                ggplot() +
+                    theme_void() +
+                    geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Please input the parameters", width = 20)), size = 12, color = "gray73", fontface = "bold") +
+                    theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
                 }
             })
-            # violin plot
-            output$violinPlot <- renderPlot({
-                if (!is.null(values$obj)) {
-                    VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-                }
-            })
-            # feature plot
+            
+            # output$violinPlot <- renderPlot({
+            #     if (!is.na(input$pc) && !is.na(input$resolution)) {
+            #         values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
+            #         VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+            #     }
+            # })
+
             output$featurePlot <- renderPlot({
                 if (!is.null(input$gene)) {
                     create_feature_plot(values$obj, input$gene)
@@ -344,11 +358,23 @@ server <- function(input, output, session) {
     })
 })
 
+    observeEvent(values$obj, {
+            output$violinPlot <- renderPlot({
+                if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
+                    values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
+                    VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+                }
+            })
+        
+    })
+
+
     # Clear all sidebar inputs when 'Reset' button is clicked
     observeEvent(input$reset, {
         shinyjs::reset("file")
         removeTab("main_tabs", "UMAP")
         removeTab("main_tabs", "Gene Expression")
+        removeTab("main_tabs", "Violin Plot")
         shinyjs::disable("run")
     })
 
