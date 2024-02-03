@@ -1,21 +1,83 @@
-#version 1; 20240129
 source('global.R')
+library(shinyjs)
+library(DT)
+library(purrr)
 
 ui <- dashboardPage(
-    dashboardHeader(title = "scRNAseq Analysis"),
+    dashboardHeader(title = "Single-Cell Clustering"),
     dashboardSidebar(
         tags$head(
-        tags$style(HTML(".skin-blue .main-header .sidebar-toggle {display: none;}"))
+        tags$style(
+            HTML("
+            .main-header{
+                background-color: #ffe; /* 更改为你想要的颜色值 */
+            }
+            .sidebar-toggle {display: true;}
+            .reset-btn {
+            color: #fff;
+            background-color: #ff3b30;
+            border-color: #ff3b30;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+            width: 87.25%;
+          }
+          .reset-btn:hover {
+            background-color: #ff453a;
+            border-color: #ff453a;
+          }
+          .run-btn {
+            color: #fff;
+            background-color: #28a745;
+            border-color: #28a745;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+            width: 87.25%;
+          }
+          .run-btn:hover {
+            background-color: #218838;
+            border-color: #218838;
+          }
+          .apple-download-btn {
+          background-color: #4CAF50; /* 绿色背景 */
+          border: none;
+          color: white;
+          text-align: center;
+          text-decoration: none;
+          display: inline-block;
+          font-size: 16px;
+          margin: 4px 2px;
+          cursor: pointer;
+          border-radius: 5px;
+          transition: background-color 0.3s;
+        }
+
+        .apple-download-btn:hover {
+          background-color: #45a049; /* 鼠标悬停时的颜色 */
+        }
+
+          
+            ")
+            
+        )
         ),
         sidebarMenu(id='tab',
             useShinyjs(),
-            menuItem("Home Page", tabName = "home", icon = icon("list")),
-            menuItem("scRNAseq Analyzer", tabName = "input", icon = icon("edit")),
+            menuItem("Home", tabName = "home", icon = icon("list")),
+            menuItem("Single-Cell Clustering Analyzer", tabName = "input", icon = icon("edit")),
             conditionalPanel(condition = "input.tab == 'input'",
                 div(
+                    # upload file
                     fileInput("file", "Upload File", multiple=TRUE, accept=c('.rds')),
-                    actionButton("reset", "Reset", icon = icon("undo"), style = "color: #fff; background-color: #dc3545; width: 87.25%"),
-                    actionButton("run", "Run", icon = icon("play"), style = "color: #fff; background-color: #28a745; width: 87.25%")
+                    # reset button
+                    actionButton("reset", "Reset", icon = icon("undo"), class = "reset-btn"),
+                    # run button
+                    actionButton("run", "Run", icon = icon("play"), class = "run-btn")
                     )
                 )
         )
@@ -30,17 +92,21 @@ ui <- dashboardPage(
                         )
                     ),
                 tabItem(tabName = "home",
-                tags$h1(HTML("<u>Welcome to The scRNAseq Suerat analysis RShiny app</u>")),
+                tags$h1(HTML("<u>Welcome to The Single-Cell Clustering Web App</u>"))
                 )
                 )
-            )         
+            ),
+            skin = "purple"      
 )
 
 server <- function(input, output, session) {
     options(shiny.maxRequestSize=300*1024^2)
-
+    clicked_link <- reactiveVal(FALSE)
     values <- reactiveValues()
-
+    saved_list <- list(
+      item1 = list(file = "/Users/pengruiyang/Desktop/Shiny/single_cell_shiny_app/pbmc_tutorial.rds", cluster = "0: 1, 1: 2"),
+      item2 = list(file = "/Users/pengruiyang/Desktop/Shiny/single_cell_shiny_app/pbmc_tutorial.rd", cluster = "0: 2, 1: 3")
+    )
     # Disable Run by default
     shinyjs::disable("run")
 
@@ -52,46 +118,68 @@ server <- function(input, output, session) {
     }
     })
 
+    output$dynamic_elements <- renderUI({
+      dynamic_elements <- imap(saved_list, function(item, key) {
+        fluidRow(
+          column(
+            width = 12,
+            actionButton(inputId = paste0("button_", key), label = paste("Button ", key)),
+            verbatimTextOutput(outputId = paste0("verbatim_output_", key))
+        )
+        )
+      })
+      do.call(tagList, dynamic_elements)
+    })
+
+    lapply(names(saved_list), function(key) {
+      output[[paste0("verbatim_output_", key)]] <- renderPrint({
+        cat(" Saved #Cell/Cluster ", key, ": ", saved_list[[key]]$cluster)
+      })
+    })
+
     observeEvent(input$run, {
         shinyjs::disable("run")
 
         # Clear tabs before 'Run' is ran another time
         removeTab("main_tabs", "UMAP")
         removeTab("main_tabs", "Gene Expression")
+        removeTab("main_tabs", "Violin Plot")
 
         show_modal_spinner(text = "Preparing plots...")
 
-        obj <- load_seurat_obj(input$file$datapath)
-        if (is.vector(obj)){
+        values$obj <- load_seurat_obj(input$file$datapath)
+        values$run_triggered <- reactiveVal(FALSE)
+        if (is.vector(values$obj)){
             showModal(modalDialog(
                 title = "Error with file",
                 HTML("<h5>There is an error with the file you uploaded. See below for more details.</h5><br>",
-                    paste(unlist(obj), collapse = "<br><br>"))
+                    paste(unlist(values$obj), collapse = "<br><br>"))
             ))
             shinyjs::enable("run")
 
         } else {
-            
+            # umap
             output$umap <- renderPlot({
                 if (!is.null(input$metadata_col)) {
-                    create_metadata_UMAP(obj, input$metadata_col)
+                    create_metadata_UMAP(values$obj, input$metadata_col)
                 }
             })
+            # violin plot
             output$violinPlot <- renderPlot({
-                if (!is.null(obj)) {
-                    VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+                if (!is.null(values$obj)) {
+                    VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
                 }
             })
-
+            # feature plot
             output$featurePlot <- renderPlot({
                 if (!is.null(input$gene)) {
-                    create_feature_plot(obj, input$gene)
+                    create_feature_plot(values$obj, input$gene)
                 }
             })
 
             output$violinPlotGene <- renderPlot({
                 if (!is.null(input$geneViolin)) {
-                    create_violin_plot(obj, input$geneViolin)
+                    create_violin_plot(values$obj, input$geneViolin)
                 }
             })
 
@@ -100,7 +188,7 @@ server <- function(input, output, session) {
                     paste0(input$gene, '_feature_plot', '.png')
                 },
                 content = function(file){
-                    plot <- create_feature_plot(obj, input$gene)
+                    plot <- create_feature_plot(values$obj, input$gene)
                     ggsave(filename=file, width = 10, height = 5, type = "cairo")
                 }
             )
@@ -109,10 +197,22 @@ server <- function(input, output, session) {
                     paste0(input$metadata_col, '_UMAP', '.png')
                 },
                 content = function(file){
-                    plot <- create_metadata_UMAP(obj, input$metadata_col)
+                    plot <- create_metadata_UMAP(values$obj, input$metadata_col)
                     ggsave(filename=file, width = 10, height = 5, type = "cairo")
                 }
             )
+          # count cell/cluster
+            output$cluster_cell_counts <- renderText({
+              cluster_ids <- Idents(values$obj)
+              cluster_cell_counts <- table(cluster_ids)
+              result_text <- paste(names(cluster_cell_counts), ": ", as.numeric(cluster_cell_counts), collapse = ", ")
+              return (result_text)
+              })
+
+          output$text_output <- renderText({
+            return("Current #Cells/Cluster")
+          })
+
 
             insertTab(
                 inputId = "main_tabs",
@@ -121,16 +221,26 @@ server <- function(input, output, session) {
                     tabPanel("UMAP Plot",
                         fluidRow(
                             column(
-                                width = 8,
+                                width = 4,
                                 plotOutput(outputId = 'umap'),
-                                downloadButton("download_umap", "Download UMAP")
+                                downloadButton("download_umap", "Download UMAP", class = "apple-download-btn")
                             ),
                             column(
                                 width = 4,
                                 selectizeInput("metadata_col", 
                                     "Metadata Column", 
-                                    colnames(obj@meta.data)
+                                    colnames(values$obj@meta.data),
                                 )
+                            ),
+                            # saved area
+                            column(
+                                width = 4,
+                                style = "overflow-y: scroll; max-height: 300px;",
+                                textOutput(outputId = "text_output"),
+                                verbatimTextOutput("cluster_cell_counts"),
+                                uiOutput("dynamic_elements")
+                                # actionButton("link1", label = "return"),
+                                # verbatimTextOutput("cluster_cell_counts1")
                             )
                         ),
                         style = "height: 90%; width: 95%; padding-top: 5%;"
@@ -156,13 +266,13 @@ server <- function(input, output, session) {
                     column(
                         width = 8,
                         plotOutput(outputId = 'featurePlot'),
-                        downloadButton("downloadFeaturePlot", "Download Feature Plot")
+                        downloadButton("downloadFeaturePlot", "Download Feature Plot", class = "apple-download-btn")
                     ),
                     column(
                         width = 4,
                         selectizeInput("gene", 
                             "Genes", 
-                            rownames(obj)
+                            rownames(values$obj)
                         )
                     )
                     ),
@@ -177,13 +287,13 @@ server <- function(input, output, session) {
                     column(
                         width = 8,
                         plotOutput(outputId = 'violinPlotGene'),
-                        downloadButton("downloadViolinPlot", "Download Violin Plot")
+                        downloadButton("downloadViolinPlot", "Download Violin Plot", class = "apple-download-btn")
                     ),
                     column(
                         width = 4,
                         selectizeInput("geneViolin", 
                             "Genes", 
-                            rownames(obj)
+                            rownames(values$obj)
                         )
                     )
                     ),
@@ -193,9 +303,46 @@ server <- function(input, output, session) {
 
             remove_modal_spinner()
             shinyjs::enable("run")
+
+            clicked_link(FALSE)
             
         }
     })
+
+  # build observeEvent for the buttons in the list
+  lapply(names(saved_list), function(key) {
+    observeEvent(input[[paste0("button_", key)]], {
+      isolate({
+        print(paste("button_", key))
+
+      local_key <- key
+      if (!clicked_link()) {
+        shinyjs::disable("reset-btn")
+
+        # Extract file path from saved_list
+        file_path <- saved_list[[local_key]]$file
+
+        # Load Seurat object based on the file_path
+        loaded_seurat <- load_seurat_obj(file_path)
+
+        # Check if loading is successful
+        if (is.vector(loaded_seurat)) {
+          showModal(modalDialog(
+            title = "Error with file",
+            HTML(paste("<h5>There is an error with the file you uploaded. See below for more details.</h5><br>",
+                       paste(unlist(loaded_seurat), collapse = "<br><br>"))
+          )))
+          shinyjs::enable("reset-btn")
+        } else {
+          # Update values$obj
+          values$obj <- loaded_seurat
+          clicked_link(TRUE)
+          shinyjs::runjs('$("#run").click();')
+        }
+      }
+      })
+    })
+})
 
     # Clear all sidebar inputs when 'Reset' button is clicked
     observeEvent(input$reset, {
@@ -204,6 +351,7 @@ server <- function(input, output, session) {
         removeTab("main_tabs", "Gene Expression")
         shinyjs::disable("run")
     })
+
 
 }
 
