@@ -12,6 +12,7 @@ library(shinybusy)
 library(glue)
 library(markdown)
 library(ggthemes)
+library(stringr)
 
 
 # Read in file and perform validation.
@@ -44,23 +45,24 @@ load_seurat_obj <- function(path){
 }
 
 
-create_metadata_UMAP <- function(obj, col){
-    if (col %in% c("nCount_RNA", "nFeature_RNA", "percent.mt")){
-    col_df <- data.frame(obj@reductions$umap@cell.embeddings, data = obj@meta.data[,col])
-    UMAP_1 <- obj@reductions$umap@cell.embeddings[, 1]
-    UMAP_2 <- obj@reductions$umap@cell.embeddings[, 2]
-    umap <- ggplot(data = col_df) +
-        geom_point(mapping = aes(UMAP_1, UMAP_2, color = log10(data)), size = 0.01) +
-        scale_colour_gradientn(colours = rainbow(7))
-    } else if (col %in% colnames(obj@meta.data)) {
-    umap <- DimPlot(obj, pt.size = .1, label = F, label.size = 4, group.by = col, reduction = "umap")
-    } else {
-    umap <- ggplot() +
-        theme_void() +
-        geom_text(aes(x = 0.5, y = 0.5, label = "col doesn't exist"), size = 20, color = "gray73", fontface = "bold") +
-        theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
-    }
-    return(umap)
+create_metadata_UMAP <- function(obj, col, pc, resolution, values){
+    tryCatch({
+        obj <- FindNeighbors(obj, dims = 1:pc)
+        obj <- FindClusters(obj, resolution = resolution)
+        obj <- RunUMAP(obj, dims = 1:pc)
+        umap <- DimPlot(obj, pt.size = .1, label = FALSE, label.size = 4, group.by = col, reduction = "umap")
+        remove_modal_spinner()
+        values$obj <- obj
+        return(umap)
+    }, error = function(err) {
+        umap <- ggplot() +
+            theme_void() +
+            geom_text(aes(x = 0.5, y = 0.5, label = str_wrap(err$message, width=20)), size = 12, color = "gray73", fontface = "bold") +
+            theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+            values$obj <- NULL
+            remove_modal_spinner()
+        return(umap)
+    })
 }
 
 create_feature_plot <- function(obj, gene) {
