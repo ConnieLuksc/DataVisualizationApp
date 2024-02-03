@@ -369,7 +369,6 @@ server <- function(input, output, session) {
         
     })
 
-
     # Clear all sidebar inputs when 'Reset' button is clicked
     observeEvent(input$reset, {
         shinyjs::reset("file")
@@ -380,13 +379,24 @@ server <- function(input, output, session) {
     })
 
     observeEvent(input$save, {
-        file_info <- input$file
-        local_path <- file.path(dirname(file_info$datapath), file_info$name)
-        saved_list$file <- local_path
-        saved_list$pc <- input$pc
-        saved_list$resolution <- input$resolution
-        saved_list$cluster <- values$result_text
+        # file_info <- input$file
+        # local_path <- file.path(dirname(file_info$datapath), file_info$name)
+        saved_list_tmp <- list(file = input$file$datapath, pc = input$pc, resolution = input$resolution, cluster = values$result_text)
+        saved_list <- c(saved_list, saved_list_tmp)
         print(saved_list)
+
+        output$dynamic_elements <- renderUI({
+            dynamic_elements <- imap(saved_list, function(item, key) {
+            fluidRow(
+                column(
+                width = 12,
+                actionButton(inputId = paste0("button_", key), label = paste("Button ", key)),
+                verbatimTextOutput(outputId = paste0("verbatim_output_", key))
+            )
+            )
+            })
+            do.call(tagList, dynamic_elements)
+        })
     })
 
 
