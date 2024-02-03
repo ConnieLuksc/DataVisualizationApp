@@ -153,6 +153,7 @@ server <- function(input, output, session) {
 
         show_modal_spinner(text = "Preparing plots...")
 
+        obj <- load_seurat_obj(input$file$datapath)
         values$obj <- load_seurat_obj(input$file$datapath)
         values$run_triggered <- reactiveVal(FALSE)
         if (is.vector(values$obj)){
