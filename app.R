@@ -10,7 +10,7 @@ ui <- dashboardPage(
         tags$style(
             HTML("
             .main-header{
-                background-color: #ffe; /* 更改为你想要的颜色值 */
+                background-color: #ffe;
             }
             .sidebar-toggle {display: true;}
             .reset-btn {
@@ -44,7 +44,7 @@ ui <- dashboardPage(
             border-color: #218838;
           }
           .apple-download-btn {
-          background-color: #4CAF50; /* 绿色背景 */
+          background-color: #4CAF50;
           border: none;
           color: white;
           text-align: center;
@@ -58,7 +58,7 @@ ui <- dashboardPage(
         }
 
         .apple-download-btn:hover {
-          background-color: #45a049; /* 鼠标悬停时的颜色 */
+          background-color: #45a049;
         }
 
           
@@ -78,6 +78,7 @@ ui <- dashboardPage(
                     actionButton("run", "Run", icon = icon("play"), style = "color: #fff; background-color: #28a745; width: 87.25%"),
                     numericInput("pc", "PC", value = NA),
                     numericInput("resolution", "Resolution", value = NA, step = 0.1),
+                    actionButton("save", "Save", style = "color: #fff; background-color: #dc3545; width: 87.25%")
                     )
                 )
         )
@@ -220,8 +221,8 @@ server <- function(input, output, session) {
             output$cluster_cell_counts <- renderText({
               cluster_ids <- Idents(values$obj)
               cluster_cell_counts <- table(cluster_ids)
-              result_text <- paste(names(cluster_cell_counts), ": ", as.numeric(cluster_cell_counts), collapse = ", ")
-              return (result_text)
+              values$result_text <- paste(names(cluster_cell_counts), ": ", as.numeric(cluster_cell_counts), collapse = ", ")
+              return (values$result_text)
               })
 
           output$text_output <- renderText({
@@ -254,8 +255,7 @@ server <- function(input, output, session) {
                                 textOutput(outputId = "text_output"),
                                 verbatimTextOutput("cluster_cell_counts"),
                                 uiOutput("dynamic_elements")
-                                # actionButton("link1", label = "return"),
-                                # verbatimTextOutput("cluster_cell_counts1")
+                                
                             )
                         ),
                         style = "height: 90%; width: 95%; padding-top: 5%;"
@@ -377,6 +377,16 @@ server <- function(input, output, session) {
         removeTab("main_tabs", "Gene Expression")
         removeTab("main_tabs", "Violin Plot")
         shinyjs::disable("run")
+    })
+
+    observeEvent(input$save, {
+        file_info <- input$file
+        local_path <- file.path(dirname(file_info$datapath), file_info$name)
+        saved_list$file <- local_path
+        saved_list$pc <- input$pc
+        saved_list$resolution <- input$resolution
+        saved_list$cluster <- values$result_text
+        print(saved_list)
     })
 
 
