@@ -104,10 +104,7 @@ server <- function(input, output, session) {
     options(shiny.maxRequestSize=300*1024^2)
     clicked_link <- reactiveVal(FALSE)
     values <- reactiveValues()
-    saved_list <- list(
-      # item1 = list(file = "/Users/pengruiyang/Desktop/Shiny/single_cell_shiny_app/pbmc_tutorial.rds", cluster = "0: 1, 1: 2"),
-      # item2 = list(file = "/Users/pengruiyang/Desktop/Shiny/single_cell_shiny_app/pbmc_tutorial.rd", cluster = "0: 2, 1: 3")
-    )
+    values$saved_list <- list()
     # Disable Run by default
     shinyjs::disable("run")
     shinyjs::disable("pc")
@@ -123,26 +120,6 @@ server <- function(input, output, session) {
         shinyjs::disable("pc")
         shinyjs::disable("resolution")
     }
-    })
-
-    output$dynamic_elements <- renderUI({
-      # current_saved_list <-saved_list()
-      dynamic_elements <- imap(saved_list, function(item, key) {
-        fluidRow(
-          column(
-            width = 12,
-            actionButton(inputId = paste0("button_", key), label = paste("Button ", key)),
-            verbatimTextOutput(outputId = paste0("verbatim_output_", key))
-        )
-        )
-      })
-      do.call(tagList, dynamic_elements)
-    })
-    # current_saved_list2 <- saved_list()
-    lapply(names(saved_list), function(key) {
-      output[[paste0("verbatim_output_", key)]] <- renderPrint({
-        cat(" Saved #Cell/Cluster ", key, ": ", saved_list[[key]]$cluster)
-      })
     })
 
     observeEvent(input$run, {
@@ -180,13 +157,6 @@ server <- function(input, output, session) {
                     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
                 }
             })
-
-            # output$violinPlot <- renderPlot({
-            #     if (!is.na(input$pc) && !is.na(input$resolution)) {
-            #         values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
-            #         VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-            #     }
-            # })
 
             output$featurePlot <- renderPlot({
                 if (!is.null(input$gene)) {
@@ -325,43 +295,6 @@ server <- function(input, output, session) {
         }
     })
 
-
-  # current_saved_list1 <- saved_list()
-  # build observeEvent for the buttons in the list
-  lapply(names(saved_list), function(key) {
-    observeEvent(input[[paste0("button_", key)]], {
-      isolate({
-        print(paste("button_", key))
-
-      local_key <- key
-      if (!clicked_link()) {
-        shinyjs::disable("reset-btn")
-
-        # Extract file path from saved_list
-        file_path <- saved_list[[local_key]]$file
-
-        # Load Seurat object based on the file_path
-        loaded_seurat <- load_seurat_obj(file_path)
-
-        # Check if loading is successful
-        if (is.vector(loaded_seurat)) {
-          showModal(modalDialog(
-            title = "Error with file",
-            HTML(paste("<h5>There is an error with the file you uploaded. See below for more details.</h5><br>",
-                       paste(unlist(loaded_seurat), collapse = "<br><br>"))
-          )))
-          shinyjs::enable("reset-btn")
-        } else {
-          # Update values$obj
-          values$obj <- loaded_seurat
-          clicked_link(TRUE)
-          shinyjs::runjs('$("#run").click();')
-        }
-      }
-      })
-    })
-})
-
     observeEvent(values$obj, {
             output$violinPlot <- renderPlot({
                 if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
@@ -381,67 +314,71 @@ server <- function(input, output, session) {
         shinyjs::disable("run")
     })
 
-    observeEvent(input$save, {
-      print(saved_list)
-      observe({
-  cat("Debugging - Length of saved_list: ", length(saved_list), "\n")
-})
-        new_index <- paste0("item", length(saved_list) + 1)
-        saved_list_tmp <- list(file = input$file$datapath, pc = input$pc, resolution = input$resolution, cluster = values$result_text)
-        saved_list[[new_index]] <<- saved_list_tmp
-        print(saved_list)
+    # monitor change of saved_list
+    observeEvent(values$saved_list, {
+      current_saved_list <- values$saved_list
 
-
-        output$dynamic_elements <- renderUI({
-            dynamic_elements <- imap(saved_list, function(item, key) {
-            fluidRow(
-                column(
-                width = 12,
-                actionButton(inputId = paste0("button_", key), label = paste("PC: ", saved_list[[key]]$pc, " Resolution: ", saved_list[[key]]$resolution)),
-                verbatimTextOutput(outputId = paste0("verbatim_output_", key))
+      # update saved area part
+      output$dynamic_elements <- renderUI({
+        dynamic_elements <- imap(current_saved_list, function(item, key) {
+          fluidRow(
+            column(
+              width = 12,
+              actionButton(inputId = paste0("button_", key), label = paste("PC: ", current_saved_list[[key]]$pc, " Resolution: ", current_saved_list[[key]]$resolution)),
+              verbatimTextOutput(outputId = paste0("verbatim_output_", key))
             )
-            )
-            })
-            do.call(tagList, dynamic_elements)
+          )
         })
-          lapply(names(saved_list), function(key) {
-          output[[paste0("verbatim_output_", key)]] <- renderPrint({
-            cat(" Saved #Cell/Cluster ", key, ": ", saved_list[[key]]$cluster)
+        do.call(tagList, dynamic_elements)
+      })
+
+      # update information
+      lapply(names(current_saved_list), function(key) {
+        output[[paste0("verbatim_output_", key)]] <- renderPrint({
+          cat(" Saved #Cell/Cluster ", key, ": ", current_saved_list[[key]]$cluster)
+        })
+      })
+
+      # update button function
+      lapply(names(current_saved_list), function(key) {
+        observeEvent(input[[paste0("button_", key)]], {
+          isolate({
+            print(paste("button_", key))
+            local_key <- key
+            if (!clicked_link()) {
+          shinyjs::disable("reset-btn")
+
+          # Extract file path from saved_list
+          file_path <- current_saved_list[[local_key]]$file
+
+          # Load Seurat object based on the file_path
+          loaded_seurat <- load_seurat_obj(file_path)
+
+          # Check if loading is successful
+          if (is.vector(loaded_seurat)) {
+            showModal(modalDialog(
+              title = "Error with file",
+              HTML(paste("<h5>There is an error with the file you uploaded. See below for more details.</h5><br>",
+                         paste(unlist(loaded_seurat), collapse = "<br><br>"))
+            )))
+            shinyjs::enable("reset-btn")
+          } else {
+            # Update values$obj
+            values$obj <- loaded_seurat
+            clicked_link(TRUE)
+            shinyjs::runjs('$("#run").click();')
+          }
+        }
           })
         })
-          lapply(names(saved_list), function(key) {
-            observeEvent(input[[paste0("button_", key)]], {
-              isolate({
-                print(paste("button_", key))
+      })
+  })
 
-              local_key <- key
-              if (!clicked_link()) {
-                shinyjs::disable("reset-btn")
-
-                # Extract file path from saved_list
-                file_path <- saved_list[[local_key]]$file
-
-                # Load Seurat object based on the file_path
-                loaded_seurat <- load_seurat_obj(file_path)
-
-                # Check if loading is successful
-                if (is.vector(loaded_seurat)) {
-                  showModal(modalDialog(
-                    title = "Error with file",
-                    HTML(paste("<h5>There is an error with the file you uploaded. See below for more details.</h5><br>",
-                               paste(unlist(loaded_seurat), collapse = "<br><br>"))
-                  )))
-                  shinyjs::enable("reset-btn")
-                } else {
-                  # Update values$obj
-                  values$obj <- loaded_seurat
-                  clicked_link(TRUE)
-                  shinyjs::runjs('$("#run").click();')
-                }
-              }
-              })
-            })
-    })
+    observeEvent(input$save, {
+        new_index <- paste0("item", length(values$saved_list) + 1)
+        saved_list_tmp <- list(file = input$file$datapath, pc = input$pc, resolution = input$resolution, cluster = values$result_text)
+        values$saved_list[[new_index]] <<- saved_list_tmp
+        print(values$saved_list)
     })
 
 
