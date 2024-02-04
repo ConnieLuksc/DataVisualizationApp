@@ -60,13 +60,8 @@ server <- function(input, output, session) {
     values <- reactiveValues()
     values$saved_list <- list()
 
-    # Disable Run by default
-    shinyjs::disable("run")
-    shinyjs::disable("pc")
-    shinyjs::disable("resolution")
-
-    observe({
-        if(is.null(input$file) != TRUE) {
+    updateUI <- function(enable = TRUE) {
+        if (enable) {
             shinyjs::enable("run")
             shinyjs::enable("pc")
             shinyjs::enable("resolution")
@@ -75,6 +70,10 @@ server <- function(input, output, session) {
             shinyjs::disable("pc")
             shinyjs::disable("resolution")
         }
+    }
+
+    observe({
+        updateUI(!is.null(input$file))
     })
 
     observeEvent(input$run, {
@@ -158,64 +157,35 @@ server <- function(input, output, session) {
     observeEvent(values$saved_list, {
         current_saved_list <- values$saved_list
 
-      # update saved area part
-    output$dynamic_elements <- renderUI({
-        dynamic_elements <- imap(current_saved_list, function(item, key) {
-          fluidRow(
-            column(
-              width = 12,
-              actionButton(inputId = paste0("button_", key), label = paste("PC: ", current_saved_list[[key]]$pc, " Resolution: ", current_saved_list[[key]]$resolution)),
-              verbatimTextOutput(outputId = paste0("verbatim_output_", key))
-            )
-          )
+        # update saved area part
+        output$dynamic_elements <- renderUI({
+            dynamic_elements <- lapply(seq_along(current_saved_list), function(key) {
+                fluidRow(
+                    column(
+                        width = 12,
+                        actionButton(inputId = paste0("button_", key), label = paste("PC: ", current_saved_list[[key]]$pc, " Resolution: ", current_saved_list[[key]]$resolution)),
+                        verbatimTextOutput(outputId = paste0("verbatim_output_", key))
+                    )
+                )
+            })
+            do.call(tagList, dynamic_elements)
         })
-        do.call(tagList, dynamic_elements)
-    })
 
-      # update information
-    lapply(names(current_saved_list), function(key) {
-        output[[paste0("verbatim_output_", key)]] <- renderPrint({
-          cat(" Saved #Cell/Cluster ", key, ": ", current_saved_list[[key]]$cluster)
+       lapply(seq_along(current_saved_list), function(key) {
+            output[[paste0("verbatim_output_", key)]] <- renderPrint({
+                cat("Saved #Cell/Cluster", key, ": ", current_saved_list[[key]]$cluster)
+            })
+
+            observeEvent(input[[paste0("button_", key)]], {
+                loaded_seurat <- load_seurat_obj(current_saved_list[[key]]$file)
+                if (!is.vector(loaded_seurat)) {
+                    values$obj <- loaded_seurat
+                    updateNumericInput(session, "pc", value = current_saved_list[[key]]$pc)
+                    updateNumericInput(session, "resolution", value = current_saved_list[[key]]$resolution)
+                    shinyjs::runjs('$("#run").click();')
+                }
+            })
         })
-    })
-
-      # update button function
-    lapply(names(current_saved_list), function(key) {
-        observeEvent(input[[paste0("button_", key)]], {
-          isolate({
-            print(paste("button_", key))
-            local_key <- key
-            if (!clicked_link()) {
-          shinyjs::disable("reset-btn")
-
-          # Extract file path from saved_list
-          file_path <- current_saved_list[[local_key]]$file
-
-          # Load Seurat object based on the file_path
-          loaded_seurat <- load_seurat_obj(file_path)
-
-          # Check if loading is successful
-          if (is.vector(loaded_seurat)) {
-            showModal(modalDialog(
-              title = "Error with file",
-              HTML(paste("<h5>There is an error with the file you uploaded. See below for more details.</h5><br>",
-                         paste(unlist(loaded_seurat), collapse = "<br><br>"))
-            )))
-            shinyjs::enable("reset-btn")
-          } else {
-            # Update values$obj
-            values$obj <- loaded_seurat
-            # Update pc
-            updateNumericInput(session, "pc", value = current_saved_list[[local_key]]$pc)
-            # Update resolution
-            updateNumericInput(session, "resolution", value = current_saved_list[[local_key]]$resolution)
-            clicked_link(TRUE)
-            shinyjs::runjs('$("#run").click();')
-          }
-        }
-          })
-        })
-      })
     })
 
     observeEvent(input$save, {
