@@ -18,40 +18,35 @@ ui <- fluidPage(
             numericInput("resolution", "Resolution", value = NA, step = 0.1),
             actionButton("save", "Save", class = "save-btn")
         ),
-        column(6,
-            plotOutput("umap"),
-            plotOutput("violinPlot"),
+        column(8,
             fluidRow(
-                column(
-                    width = 8,
-                    plotOutput(outputId = 'featurePlot')
-                ),
-                column(
-                    width = 4,
-                    selectizeInput("gene", "Genes", choices = NULL) 
-                )
+                column(7, plotOutput("violinPlot")),
+                column(5, plotOutput("umap")),
             ),
             fluidRow(
                 column(
-                    width = 8,
-                    plotOutput(outputId = 'violinPlotGene')
+                    6,
+                    plotOutput(outputId = 'featurePlot'),
+                    selectizeInput("gene", "Genes", choices = NULL)
                 ),
                 column(
-                    width = 4,
+                    6,
+                    plotOutput(outputId = 'violinPlotGene'),
                     selectizeInput("geneViolin", "Genes", choices = NULL)
                 )
             )
         ),
         column(
-            width = 4,
+            width = 2,
             style = "overflow-y: scroll; max-height: 300px;",
             textOutput(outputId = "text_output"),
             verbatimTextOutput("cluster_cell_counts"),
             uiOutput("dynamic_elements")
-
         )
     )
 )
+
+
 
 # Define server logic
 server <- function(input, output, session) {
