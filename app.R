@@ -10,7 +10,7 @@ ui <- dashboardPage(
         tags$style(
             HTML("
             .main-header{
-                background-color: #ffe; /* 更改为你想要的颜色值 */
+                background-color: #ffe;
             }
             .sidebar-toggle {display: true;}
             .reset-btn {
@@ -44,7 +44,7 @@ ui <- dashboardPage(
             border-color: #218838;
           }
           .apple-download-btn {
-          background-color: #4CAF50; /* 绿色背景 */
+          background-color: #4CAF50;
           border: none;
           color: white;
           text-align: center;
@@ -58,12 +58,12 @@ ui <- dashboardPage(
         }
 
         .apple-download-btn:hover {
-          background-color: #45a049; /* 鼠标悬停时的颜色 */
+          background-color: #45a049;
         }
 
-          
+
             ")
-            
+
         )
         ),
         sidebarMenu(id='tab',
@@ -74,14 +74,15 @@ ui <- dashboardPage(
                 div(
                     # upload file
                     fileInput("file", "Upload File", multiple=TRUE, accept=c('.rds')),
-                    # reset button
-                    actionButton("reset", "Reset", icon = icon("undo"), class = "reset-btn"),
-                    # run button
-                    actionButton("run", "Run", icon = icon("play"), class = "run-btn")
+                    actionButton("reset", "Reset", icon = icon("undo"), style = "color: #fff; background-color: #dc3545; width: 87.25%"),
+                    actionButton("run", "Run", icon = icon("play"), style = "color: #fff; background-color: #28a745; width: 87.25%"),
+                    numericInput("pc", "PC", value = NA),
+                    numericInput("resolution", "Resolution", value = NA, step = 0.1),
+                    actionButton("save", "Save", style = "color: #fff; background-color: #dc3545; width: 87.25%")
                     )
                 )
         )
-    ), 
+    ),
     dashboardBody(
             tabItems(
                 tabItem(tabName = "input", # tabItem refers to tab in sidebar (not main panel)
@@ -96,7 +97,7 @@ ui <- dashboardPage(
                 )
                 )
             ),
-            skin = "purple"      
+            skin = "purple"
 )
 
 server <- function(input, output, session) {
@@ -104,21 +105,28 @@ server <- function(input, output, session) {
     clicked_link <- reactiveVal(FALSE)
     values <- reactiveValues()
     saved_list <- list(
-      item1 = list(file = "/Users/pengruiyang/Desktop/Shiny/single_cell_shiny_app/pbmc_tutorial.rds", cluster = "0: 1, 1: 2"),
-      item2 = list(file = "/Users/pengruiyang/Desktop/Shiny/single_cell_shiny_app/pbmc_tutorial.rd", cluster = "0: 2, 1: 3")
+      # item1 = list(file = "/Users/pengruiyang/Desktop/Shiny/single_cell_shiny_app/pbmc_tutorial.rds", cluster = "0: 1, 1: 2"),
+      # item2 = list(file = "/Users/pengruiyang/Desktop/Shiny/single_cell_shiny_app/pbmc_tutorial.rd", cluster = "0: 2, 1: 3")
     )
     # Disable Run by default
     shinyjs::disable("run")
+    shinyjs::disable("pc")
+    shinyjs::disable("resolution")
 
     observe({
     if(is.null(input$file) != TRUE) {
         shinyjs::enable("run")
+        shinyjs::enable("pc")
+        shinyjs::enable("resolution")
     } else {
         shinyjs::disable("run")
+        shinyjs::disable("pc")
+        shinyjs::disable("resolution")
     }
     })
 
     output$dynamic_elements <- renderUI({
+      # current_saved_list <-saved_list()
       dynamic_elements <- imap(saved_list, function(item, key) {
         fluidRow(
           column(
@@ -130,7 +138,7 @@ server <- function(input, output, session) {
       })
       do.call(tagList, dynamic_elements)
     })
-
+    # current_saved_list2 <- saved_list()
     lapply(names(saved_list), function(key) {
       output[[paste0("verbatim_output_", key)]] <- renderPrint({
         cat(" Saved #Cell/Cluster ", key, ": ", saved_list[[key]]$cluster)
@@ -147,6 +155,7 @@ server <- function(input, output, session) {
 
         show_modal_spinner(text = "Preparing plots...")
 
+        obj <- load_seurat_obj(input$file$datapath)
         values$obj <- load_seurat_obj(input$file$datapath)
         values$run_triggered <- reactiveVal(FALSE)
         if (is.vector(values$obj)){
@@ -157,20 +166,28 @@ server <- function(input, output, session) {
             ))
             shinyjs::enable("run")
 
+
         } else {
             # umap
             output$umap <- renderPlot({
-                if (!is.null(input$metadata_col)) {
-                    create_metadata_UMAP(values$obj, input$metadata_col)
+                if (!is.na(input$pc) && !is.na(input$resolution)) {
+                    show_modal_spinner(text = "Preparing plots...")
+                    create_metadata_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values)
+                }else{
+                ggplot() +
+                    theme_void() +
+                    geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Please input the parameters", width = 20)), size = 12, color = "gray73", fontface = "bold") +
+                    theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
                 }
             })
-            # violin plot
-            output$violinPlot <- renderPlot({
-                if (!is.null(values$obj)) {
-                    VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-                }
-            })
-            # feature plot
+
+            # output$violinPlot <- renderPlot({
+            #     if (!is.na(input$pc) && !is.na(input$resolution)) {
+            #         values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
+            #         VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+            #     }
+            # })
+
             output$featurePlot <- renderPlot({
                 if (!is.null(input$gene)) {
                     create_feature_plot(values$obj, input$gene)
@@ -205,8 +222,8 @@ server <- function(input, output, session) {
             output$cluster_cell_counts <- renderText({
               cluster_ids <- Idents(values$obj)
               cluster_cell_counts <- table(cluster_ids)
-              result_text <- paste(names(cluster_cell_counts), ": ", as.numeric(cluster_cell_counts), collapse = ", ")
-              return (result_text)
+              values$result_text <- paste(names(cluster_cell_counts), ": ", as.numeric(cluster_cell_counts), collapse = ", ")
+              return (values$result_text)
               })
 
           output$text_output <- renderText({
@@ -227,8 +244,8 @@ server <- function(input, output, session) {
                             ),
                             column(
                                 width = 4,
-                                selectizeInput("metadata_col", 
-                                    "Metadata Column", 
+                                selectizeInput("metadata_col",
+                                    "Metadata Column",
                                     colnames(values$obj@meta.data),
                                 )
                             ),
@@ -239,8 +256,7 @@ server <- function(input, output, session) {
                                 textOutput(outputId = "text_output"),
                                 verbatimTextOutput("cluster_cell_counts"),
                                 uiOutput("dynamic_elements")
-                                # actionButton("link1", label = "return"),
-                                # verbatimTextOutput("cluster_cell_counts1")
+
                             )
                         ),
                         style = "height: 90%; width: 95%; padding-top: 5%;"
@@ -270,8 +286,8 @@ server <- function(input, output, session) {
                     ),
                     column(
                         width = 4,
-                        selectizeInput("gene", 
-                            "Genes", 
+                        selectizeInput("gene",
+                            "Genes",
                             rownames(values$obj)
                         )
                     )
@@ -291,8 +307,8 @@ server <- function(input, output, session) {
                     ),
                     column(
                         width = 4,
-                        selectizeInput("geneViolin", 
-                            "Genes", 
+                        selectizeInput("geneViolin",
+                            "Genes",
                             rownames(values$obj)
                         )
                     )
@@ -305,10 +321,12 @@ server <- function(input, output, session) {
             shinyjs::enable("run")
 
             clicked_link(FALSE)
-            
+
         }
     })
 
+
+  # current_saved_list1 <- saved_list()
   # build observeEvent for the buttons in the list
   lapply(names(saved_list), function(key) {
     observeEvent(input[[paste0("button_", key)]], {
@@ -344,12 +362,86 @@ server <- function(input, output, session) {
     })
 })
 
+    observeEvent(values$obj, {
+            output$violinPlot <- renderPlot({
+                if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
+                    values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
+                    VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+                }
+            })
+
+    })
+
     # Clear all sidebar inputs when 'Reset' button is clicked
     observeEvent(input$reset, {
         shinyjs::reset("file")
         removeTab("main_tabs", "UMAP")
         removeTab("main_tabs", "Gene Expression")
+        removeTab("main_tabs", "Violin Plot")
         shinyjs::disable("run")
+    })
+
+    observeEvent(input$save, {
+      print(saved_list)
+      observe({
+  cat("Debugging - Length of saved_list: ", length(saved_list), "\n")
+})
+        new_index <- paste0("item", length(saved_list) + 1)
+        saved_list_tmp <- list(file = input$file$datapath, pc = input$pc, resolution = input$resolution, cluster = values$result_text)
+        saved_list[[new_index]] <<- saved_list_tmp
+        print(saved_list)
+
+
+        output$dynamic_elements <- renderUI({
+            dynamic_elements <- imap(saved_list, function(item, key) {
+            fluidRow(
+                column(
+                width = 12,
+                actionButton(inputId = paste0("button_", key), label = paste("PC: ", saved_list[[key]]$pc, " Resolution: ", saved_list[[key]]$resolution)),
+                verbatimTextOutput(outputId = paste0("verbatim_output_", key))
+            )
+            )
+            })
+            do.call(tagList, dynamic_elements)
+        })
+          lapply(names(saved_list), function(key) {
+          output[[paste0("verbatim_output_", key)]] <- renderPrint({
+            cat(" Saved #Cell/Cluster ", key, ": ", saved_list[[key]]$cluster)
+          })
+        })
+          lapply(names(saved_list), function(key) {
+            observeEvent(input[[paste0("button_", key)]], {
+              isolate({
+                print(paste("button_", key))
+
+              local_key <- key
+              if (!clicked_link()) {
+                shinyjs::disable("reset-btn")
+
+                # Extract file path from saved_list
+                file_path <- saved_list[[local_key]]$file
+
+                # Load Seurat object based on the file_path
+                loaded_seurat <- load_seurat_obj(file_path)
+
+                # Check if loading is successful
+                if (is.vector(loaded_seurat)) {
+                  showModal(modalDialog(
+                    title = "Error with file",
+                    HTML(paste("<h5>There is an error with the file you uploaded. See below for more details.</h5><br>",
+                               paste(unlist(loaded_seurat), collapse = "<br><br>"))
+                  )))
+                  shinyjs::enable("reset-btn")
+                } else {
+                  # Update values$obj
+                  values$obj <- loaded_seurat
+                  clicked_link(TRUE)
+                  shinyjs::runjs('$("#run").click();')
+                }
+              }
+              })
+            })
+    })
     })
 
 
