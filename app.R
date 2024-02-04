@@ -354,6 +354,7 @@ server <- function(input, output, session) {
           # Load Seurat object based on the file_path
           loaded_seurat <- load_seurat_obj(file_path)
 
+
           # Check if loading is successful
           if (is.vector(loaded_seurat)) {
             showModal(modalDialog(
@@ -365,6 +366,10 @@ server <- function(input, output, session) {
           } else {
             # Update values$obj
             values$obj <- loaded_seurat
+            # Update pc
+            updateNumericInput(session, "pc", value = current_saved_list[[local_key]]$pc)
+            # Update resolution
+            updateNumericInput(session, "resolution", value = current_saved_list[[local_key]]$resolution)
             clicked_link(TRUE)
             shinyjs::runjs('$("#run").click();')
           }
