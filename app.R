@@ -23,8 +23,8 @@ ui <- fluidPage(
         ),
         column(8,
                fluidRow(
-                 column(7, plotOutput("violinPlot")),
-                 column(5, plotOutput("umap")),
+                 column(5, plotOutput("violinPlot")),
+                 column(7, plotOutput("umap")),
                ),
                fluidRow(
                  column(
@@ -111,20 +111,17 @@ server <- function(input, output, session) {
           create_feature_plot(values$obj, input$gene, values)
         }
       })
-      output$violinPlot <- renderPlot({
-        if (!is.na(input$pc) &&
-          !is.na(input$resolution) &&
-          !is.null(values$obj)) {
-          values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
-          violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-          values$violinPlot <- violinPlot
-          violinPlot
+
+    output$violinPlot <- renderPlot({
+        if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
+            values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
+            VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
         }
-      })
+    })
 
       output$violinPlotGene <- renderPlot({
         if (!is.null(input$geneViolin)) {
-          create_violin_plot(values$obj, input$geneViolin, values)
+          create_violin_plot(values$obj, input$geneViolin, values, ncol = NULL, pt.size = 0)
         }
       })
 

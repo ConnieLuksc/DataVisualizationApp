@@ -13,6 +13,7 @@ library(glue)
 library(markdown)
 library(ggthemes)
 library(stringr)
+library(patchwork)
 
 
 # Read in file and perform validation.
@@ -79,9 +80,10 @@ create_feature_plot <- function(obj, gene, values) {
     return(FP)
 }
 
-create_violin_plot <- function(obj, gene, values) {
+create_violin_plot <- function(obj, gene, values, ncol, pt.size) {
+    VP <- NULL
     if (gene %in% rownames(obj)) {
-        VP <- VlnPlot(obj, features = gene, pt.size = 0.001, combine = FALSE)
+        VP <- VlnPlot(obj, features = gene, combine = FALSE, ncol = ncol, pt.size = pt.size)
     }
     values$violin <- VP
     return(VP)
