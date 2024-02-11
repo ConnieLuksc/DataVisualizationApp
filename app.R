@@ -16,6 +16,7 @@ ui <- fluidPage(
             actionButton("run", "Run", class = "run-btn"),
             numericInput("pc", "PC", value = NA),
             numericInput("resolution", "Resolution", value = NA, step = 0.1),
+            selectizeInput("gene", "Genes", choices = NULL),
             actionButton("save", "Save", class = "save-btn")
         ),
         column(8,
@@ -27,12 +28,10 @@ ui <- fluidPage(
                 column(
                     6,
                     plotOutput(outputId = 'featurePlot'),
-                    selectizeInput("gene", "Genes", choices = NULL)
                 ),
                 column(
                     6,
                     plotOutput(outputId = 'violinPlotGene'),
-                    selectizeInput("geneViolin", "Genes", choices = NULL)
                 )
             )
         ),
@@ -54,6 +53,8 @@ server <- function(input, output, session) {
     clicked_link <- reactiveVal(FALSE)
     values <- reactiveValues()
     values$saved_list <- list()
+    values$selected_gene <- NULL
+
 
     updateUI <- function(enable = TRUE) {
         if (enable) {
@@ -78,6 +79,7 @@ server <- function(input, output, session) {
         obj <- load_seurat_obj(input$file$datapath)
         values$obj <- obj
         values$run_triggered <- reactiveVal(FALSE)
+        values$selected_gene <- rownames(obj)[1]
 
         if (is.vector(values$obj)) {
             # Handle error in file upload or object loading
@@ -112,8 +114,8 @@ server <- function(input, output, session) {
             })
 
             output$violinPlotGene <- renderPlot({
-                if (!is.null(input$geneViolin)) {
-                    create_violin_plot(values$obj, input$geneViolin)
+                if (!is.null(input$gene)) {
+                    create_violin_plot(values$obj, input$gene)
                 }
             })
 
@@ -177,6 +179,7 @@ server <- function(input, output, session) {
                     values$obj <- loaded_seurat
                     updateNumericInput(session, "pc", value = current_saved_list[[key]]$pc)
                     updateNumericInput(session, "resolution", value = current_saved_list[[key]]$resolution)
+                    updateSelectizeInput(session, "gene", choices = rownames(values$obj), selected = values$selected_gene)
                     shinyjs::runjs('$("#run").click();')
                 }
             })
@@ -189,10 +192,12 @@ server <- function(input, output, session) {
         values$saved_list[[new_index]] <<- saved_list_tmp
         print(values$saved_list)
     })
-    observe({
+    observeEvent(input$gene, {
+        values$selected_gene <- input$gene
+    })
+    observeEvent(values$obj, {
         if (!is.null(values$obj)) {
-            updateSelectizeInput(session, "gene", choices = rownames(values$obj))
-            updateSelectizeInput(session, "geneViolin", choices = rownames(values$obj))
+            updateSelectizeInput(session, "gene", choices = rownames(values$obj), selected = values$selected_gene)
         }
     })
 }

@@ -71,7 +71,7 @@ create_feature_plot <- function(obj, gene) {
     } else {
         FP <- ggplot() +
         theme_void() +
-        geom_text(aes(x = 0.5, y = 0.5, label = "Gene doesn't exist"), size = 20, color = "gray73", fontface = "bold") +
+        geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
         theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
     }
     return(FP)
@@ -80,6 +80,11 @@ create_feature_plot <- function(obj, gene) {
 create_violin_plot <- function(obj, gene) {
     if (gene %in% rownames(obj)) {
         VP <- VlnPlot(obj, features = gene, pt.size = 0.001, combine = FALSE)
+    }else{
+        VP <- ggplot() +
+        theme_void() +
+        geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
+        theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
     }
     return(VP)
 }
