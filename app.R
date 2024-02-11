@@ -14,30 +14,29 @@ ui <- fluidPage(
       "Tab 1",
       fluidRow(
         column(2,
-               fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
-               actionButton("reset", "Reset", class = "reset-btn"),
-               actionButton("run", "Run", class = "run-btn"),
-               numericInput("pc", "PC", value = NA),
-               numericInput("resolution", "Resolution", value = NA, step = 0.1),
-               actionButton("save", "Save", class = "save-btn")
+            fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
+            actionButton("reset", "Reset", class = "reset-btn"),
+            actionButton("run", "Run", class = "run-btn"),
+            numericInput("pc", "PC", value = NA),
+            numericInput("resolution", "Resolution", value = NA, step = 0.1),
+            selectizeInput("gene", "Genes", choices = NULL),
+            actionButton("save", "Save", class = "save-btn")
         ),
         column(8,
-               fluidRow(
-                 column(5, plotOutput("violinPlot")),
-                 column(7, plotOutput("umap")),
-               ),
-               fluidRow(
-                 column(
-                   6,
-                   plotOutput(outputId = 'featurePlot'),
-                   selectizeInput("gene", "Genes", choices = NULL)
-                 ),
-                 column(
-                   6,
-                   plotOutput(outputId = 'violinPlotGene'),
-                   selectizeInput("geneViolin", "Genes", choices = NULL)
-                 )
-               )
+            fluidRow(
+                column(7, plotOutput("violinPlot")),
+                column(5, plotOutput("umap")),
+            ),
+            fluidRow(
+                column(
+                    6,
+                    plotOutput(outputId = 'featurePlot'),
+                ),
+                column(
+                    6,
+                    plotOutput(outputId = 'violinPlotGene'),
+                )
+            )
         ),
         column(
           width = 2,
@@ -61,6 +60,8 @@ server <- function(input, output, session) {
   values$saved_list <- list()
   ignore_button_clicked <- FALSE
   values$count <- 2
+    values$selected_gene <- NULL
+
 
   updateUI <- function(enable = TRUE) {
     if (enable) {
@@ -81,10 +82,11 @@ server <- function(input, output, session) {
   observeEvent(input$run, {
     shinyjs::disable("run")
 
-    # Assuming load_seurat_obj is a function you've defined to load the Seurat object
-    obj <- load_seurat_obj(input$file$datapath)
-    values$obj <- obj
-    values$run_triggered <- reactiveVal(FALSE)
+        # Assuming load_seurat_obj is a function you've defined to load the Seurat object
+        obj <- load_seurat_obj(input$file$datapath)
+        values$obj <- obj
+        values$run_triggered <- reactiveVal(FALSE)
+        values$selected_gene <- rownames(obj)[1]
 
     if (is.vector(values$obj)) {
       # Handle error in file upload or object loading
@@ -119,11 +121,11 @@ server <- function(input, output, session) {
         }
     })
 
-      output$violinPlotGene <- renderPlot({
-        if (!is.null(input$geneViolin)) {
-          create_violin_plot(values$obj, input$geneViolin, values, ncol = NULL, pt.size = 0)
-        }
-      })
+            output$violinPlotGene <- renderPlot({
+                if (!is.null(input$gene)) {
+                    create_violin_plot(values$obj, input$gene)
+                }
+            })
 
       # count cell/cluster
       # output$cluster_cell_counts <- renderText({
