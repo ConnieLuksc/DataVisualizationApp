@@ -60,7 +60,7 @@ server <- function(input, output, session) {
   values$saved_list <- list()
   ignore_button_clicked <- FALSE
   values$count <- 2
-    values$selected_gene <- NULL
+  values$selected_gene <- NULL
 
 
   updateUI <- function(enable = TRUE) {
@@ -123,7 +123,7 @@ server <- function(input, output, session) {
 
             output$violinPlotGene <- renderPlot({
                 if (!is.null(input$gene)) {
-                    create_violin_plot(values$obj, input$gene)
+                    create_violin_plot(values$obj, input$gene, values, ncol = NULL, pt.size = 0)
                 }
             })
 
@@ -276,10 +276,14 @@ server <- function(input, output, session) {
     values$saved_list[[new_index]] <- saved_list_tmp
     # print(values$saved_list)
   })
-  observe({
+
+    observeEvent(input$gene, {
+        values$selected_gene <- input$gene
+    })
+
+  observeEvent(values$obj, {
     if (!is.null(values$obj)) {
-      updateSelectizeInput(session, "gene", choices = rownames(values$obj))
-      updateSelectizeInput(session, "geneViolin", choices = rownames(values$obj))
+      updateSelectizeInput(session, "gene", choices = rownames(values$obj), selected = values$selected_gene)
     }
   })
 }
