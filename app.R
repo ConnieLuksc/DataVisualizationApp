@@ -24,8 +24,8 @@ ui <- fluidPage(
         ),
         column(8,
             fluidRow(
-                column(7, plotOutput("violinPlot")),
-                column(5, plotOutput("umap")),
+                column(5, plotOutput("violinPlot")),
+                column(7, plotOutput("umap")),
             ),
             fluidRow(
                 column(
