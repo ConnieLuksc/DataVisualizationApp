@@ -131,14 +131,6 @@ server <- function(input, output, session) {
         }
       })
 
-      # count cell/cluster
-      # output$cluster_cell_counts <- renderText({
-      #     cluster_ids <- Idents(values$obj)
-      #     cluster_cell_counts <- table(cluster_ids)
-      #     values$result_text <- paste(names(cluster_cell_counts), ": ", as.numeric(cluster_cell_counts), collapse = ", ")
-      #     return (values$result_text)
-      # })
-
       output$cluster_cell_counts <- DT::renderDataTable({
         cluster_ids <- Idents(values$obj)
         values$cluster_cell_counts <- table(cluster_ids)
