@@ -83,7 +83,7 @@ create_feature_plot <- function(obj, gene, values) {
 create_violin_plot <- function(obj, gene, values, ncol, pt.size) {
     VP <- NULL
     if (gene %in% rownames(obj)) {
-        VP <- VlnPlot(obj, features = gene, pt.size = 0.001, combine = FALSE)
+        VP <- VlnPlot(obj, features = gene, pt.size = 0, combine = FALSE)
     }else{
         VP <- ggplot() +
         theme_void() +

@@ -115,14 +115,12 @@ server <- function(input, output, session) {
       })
 
       output$violinPlot <- renderPlot({
-        if (!is.na(input$pc) &&
-          !is.na(input$resolution) &&
-          !is.null(values$obj)) {
-          values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
-          violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-          values$violinPlot <- violinPlot
-          violinPlot
-        }
+          if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
+              values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
+              violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
+              values$violinPlot <- violinPlot
+              violinPlot
+          }
       })
 
       output$violinPlotGene <- renderPlot({
@@ -223,8 +221,8 @@ server <- function(input, output, session) {
                     ),
                     column(8,
                            fluidRow(
-                             column(7, plotOutput(paste0("violinPlot", values$count))),
-                             column(5, plotOutput(paste0("umap", values$count))),
+                             column(5, plotOutput(paste0("violinPlot", values$count))),
+                             column(7, plotOutput(paste0("umap", values$count))),
                            ),
                            fluidRow(
                              column(
