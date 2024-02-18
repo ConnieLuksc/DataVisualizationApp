@@ -14,6 +14,7 @@ library(markdown)
 library(ggthemes)
 library(stringr)
 library(patchwork)
+library(RColorBrewer)
 
 
 # Read in file and perform validation.
@@ -67,29 +68,41 @@ create_metadata_UMAP <- function(obj, col, pc, resolution, values){
     })
 }
 
-create_feature_plot <- function(obj, gene, values) {
-    if (gene %in% rownames(obj)) {
-        FP <- FeaturePlot(obj, features = gene, pt.size = 0.001, combine = FALSE)
-    } else {
-        FP <- ggplot() +
-        theme_void() +
-        geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
-        theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
-    }
+create_feature_plot <- function(obj, genes, values) {
+    genes_list <- strsplit(genes, "\\s+")
+    obj <- AddModuleScore(obj, features = genes_list, name = "module")
+    FP <- FeaturePlot(obj, features = "module1", label = TRUE, repel = TRUE)
+
+    # if (gene %in% rownames(obj)) {
+        # FP <- FeaturePlot(obj, features = gene, pt.size = 0.001, combine = FALSE)
+    # } else {
+    #     FP <- ggplot() +
+    #     theme_void() +
+    #     geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
+    #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+    # }
     values$feature <- FP
     return(FP)
 }
 
-create_violin_plot <- function(obj, gene, values, ncol, pt.size) {
-    VP <- NULL
-    if (gene %in% rownames(obj)) {
-        VP <- VlnPlot(obj, features = gene, pt.size = 0, combine = FALSE)
-    }else{
-        VP <- ggplot() +
-        theme_void() +
-        geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
-        theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
+    genes_list <- strsplit(genes, "\\s+")
+    VP <- list()
+
+    for (gene in genes_list) {
+        VP[[gene]] <- VlnPlot(obj, features = gene, combine = TRUE)
     }
+
+    combined_plot <- cowplot::plot_grid(plotlist = VP, ncol = length(genes_list))
+
+    # if (gene %in% rownames(obj)) {
+    #     VP <- VlnPlot(obj, features = gene, pt.size = 0, combine = FALSE)
+    # }else{
+    #     VP <- ggplot() +
+    #     theme_void() +
+    #     geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
+    #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+    # }
     values$violin <- VP
-    return(VP)
+    return(combined_plot)
 }

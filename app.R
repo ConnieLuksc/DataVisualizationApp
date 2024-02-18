@@ -19,7 +19,11 @@ ui <- fluidPage(
                actionButton("run", "Run", class = "run-btn"),
                numericInput("pc", "PC", value = NA),
                numericInput("resolution", "Resolution", value = NA, step = 0.1),
-               selectizeInput("gene", "Genes", choices = NULL),
+               div(style = "max-height: 200px; overflow-y: auto;", checkboxGroupInput("genes", "Genes", inline = TRUE)),
+               selectInput('clusters', 'Clusters', choices = NULL, multiple=TRUE, selectize=TRUE),
+               textInput("annotation", "Annotation"),
+              #  selectizeInput("gene", "Genes", choices = NULL),
+               actionButton("annotate", "Annotate"),
                actionButton("save", "Save", class = "save-btn")
         ),
         column(8,
@@ -60,7 +64,9 @@ server <- function(input, output, session) {
   values$saved_list <- list()
   ignore_button_clicked <- FALSE
   values$count <- 2
-  values$selected_gene <- NULL
+  # values$selected_gene <- NULL
+  values$selected_genes <- NULL
+  values$annotations <- list()
 
 
   updateUI <- function(enable = TRUE) {
@@ -86,7 +92,7 @@ server <- function(input, output, session) {
     obj <- load_seurat_obj(input$file$datapath)
     values$obj <- obj
     values$run_triggered <- reactiveVal(FALSE)
-    values$selected_gene <- rownames(obj)[1]
+    # values$selected_gene <- rownames(obj)[1]
 
     if (is.vector(values$obj)) {
       # Handle error in file upload or object loading
@@ -109,8 +115,8 @@ server <- function(input, output, session) {
       })
 
       output$featurePlot <- renderPlot({
-        if (!is.null(input$gene)) {
-          create_feature_plot(values$obj, input$gene, values)
+        if (!is.null(input$genes)) {
+          create_feature_plot(values$obj, input$genes, values)
         }
       })
 
@@ -124,8 +130,8 @@ server <- function(input, output, session) {
       })
 
       output$violinPlotGene <- renderPlot({
-        if (!is.null(input$gene)) {
-          create_violin_plot(values$obj, input$gene, values, ncol = NULL, pt.size = 0)
+        if (!is.null(input$genes)) {
+          create_violin_plot(values$obj, input$genes, values, ncol = NULL, pt.size = 0)
         }
       })
 
@@ -268,16 +274,32 @@ server <- function(input, output, session) {
     # values&umap <- output$umap()
     saved_list_tmp <- list(file = input$file$datapath, pc = input$pc, resolution = input$resolution, cluster = values$cluster_cell_counts, umap = values$umap, violin = values$violinPlot, feature = values$feature, geneViolin = values$violin)
     values$saved_list[[new_index]] <- saved_list_tmp
-    # print(values$saved_list)
   })
 
-  observeEvent(input$gene, {
-    values$selected_gene <- input$gene
+  observeEvent(input$annotate, {
+      clusters_list <- strsplit(input$clusters, "\\s+")
+      for(cluster in  clusters_list){
+        values$annotations[[cluster]] = input$annotation
+      }
+    #   for(i in seq_along(values$annotations)){
+    #   cluster <- names(values$annotations)[i]
+    #   item <- values$annotations[[cluster]]
+    #   print(paste("Cluster:", cluster, "| Annotation:", item))
+    # }
+    })
+
+  # observeEvent(input$gene, {
+  #   values$selected_gene <- input$gene
+  # })
+  observeEvent(input$genes, {
+    values$selected_genes <- input$genes
   })
 
   observeEvent(values$obj, {
     if (!is.null(values$obj)) {
-      updateSelectizeInput(session, "gene", choices = rownames(values$obj), selected = values$selected_gene)
+      # updateSelectizeInput(session, "gene", choices = rownames(values$obj), selected = values$selected_gene)
+      updateCheckboxGroupInput(session, "genes", choices = rownames(values$obj), selected = values$selected_genes)
+      updateSelectInput(session, "clusters", choices = names(values$cluster_cell_counts))
     }
   })
 }
