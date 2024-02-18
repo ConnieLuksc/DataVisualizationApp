@@ -22,6 +22,9 @@ ui <- fluidPage(
           numericInput("pc", "PC", value = NA),
           numericInput("resolution", "Resolution", value = NA, step = 0.1),
           selectizeInput("gene", "Genes", choices = NULL),
+          selectInput('clusters', 'Clusters', choices = NULL, multiple = TRUE, selectize = TRUE),
+          textInput("annotation", "Annotation"),
+          actionButton("annotate", "Annotate"),
           actionButton("save", "Save", class = "save-btn")
         ),
         column(
@@ -76,6 +79,9 @@ server <- function(input, output, session) {
   ignore_button_clicked <- FALSE
   values$count <- 2
   values$selected_gene <- NULL
+  values$annotations <- list()
+  values$cluster_num <- 0
+  values$annotation_show <- reactive({ rep("NA", times = values$cluster_num) })
 
 
   updateUI <- function(enable = TRUE) {
@@ -148,20 +154,22 @@ server <- function(input, output, session) {
       output$violinPlotGene <- renderPlot({
         if (!is.null(input$gene)) {
           create_violin_plot(values$obj, input$gene, values,
-            ncol = NULL, pt.size = 0
+                             ncol = NULL, pt.size = 0
           )
         }
       })
 
       output$cluster_cell_counts <- DT::renderDataTable(
-        {
-          cluster_ids <- Idents(values$obj)
-          values$cluster_cell_counts <- table(cluster_ids)
-          data.frame(
-            Cluster = names(values$cluster_cell_counts),
-            Count = as.numeric(values$cluster_cell_counts)
-          )
-        },
+      {
+        cluster_ids <- Idents(values$obj)
+        values$cluster_cell_counts <- table(cluster_ids)
+        values$cluster_num <- length(names(values$cluster_cell_counts))
+        data.frame(
+          Cluster = names(values$cluster_cell_counts),
+          # Annotation = values$annotation_show,
+          Count = as.numeric(values$cluster_cell_counts)
+        )
+      },
         options = list(paging = FALSE),
         rownames = FALSE
       )
@@ -173,18 +181,25 @@ server <- function(input, output, session) {
       })
 
       output$umap_annotation <- renderPlot({
-        if (!is.na(input$pc) && !is.na(input$resolution)) {
-          create_annotation_UMAP(
-            obj, "seurat_clusters",
-            input$pc, input$resolution, values
-          )
+        if (length(values$annotations) > 0) {
+          create_annotation_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values, values$annotations)
         } else {
+          values$umap_annotation <- ggplot() +
+            theme_void() +
+            geom_text(
+              aes(
+                x = 0.5, y = 0.5,
+                label = str_wrap("Annotations unavailable", width = 20)
+              ),
+              size = 12, color = "gray73", fontface = "bold"
+            ) +
+            theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
           ggplot() +
             theme_void() +
             geom_text(
               aes(
                 x = 0.5, y = 0.5,
-                label = str_wrap("Please input the parameters", width = 20)
+                label = str_wrap("Annotations unavailable", width = 20)
               ),
               size = 12, color = "gray73", fontface = "bold"
             ) +
@@ -192,14 +207,32 @@ server <- function(input, output, session) {
         }
       })
 
+      output$unavailable_sankey <- renderPlot({
+        ggplot() +
+          theme_void() +
+          geom_text(
+            aes(
+              x = 0.5, y = 0.5,
+              label = str_wrap("Annotations missing", width = 20)
+            ),
+            size = 12, color = "gray73", fontface = "bold"
+          ) +
+          theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+      })
+
       output$sankeyPlot <- renderUI({
-        if (!is.null(values$obj)) {
-          create_sankey_plot(values$obj, values, input$pc, input$resolution)
+        if (length(names(values$cluster_cell_counts)) == length(unique(unlist(values$annotations)))) {
+          create_sankey_plot(values$obj, values, input$pc, input$resolution, values$annotations, values$cluster_cell_counts)
+        }
+        else {
+          plotOutput("unavailable_sankey")
+          values$sankey <- plotOutput("unavailable_sankey")
         }
       })
 
 
       output$text_output <- renderText({
+        remove_modal_spinner()
         return("Current #Cells/Cluster")
       })
 
@@ -271,12 +304,12 @@ server <- function(input, output, session) {
 
       lapply(seq_along(current_saved_list), function(key) {
         output[[paste0("verbatim_output_", key)]] <- DT::renderDataTable(
-          {
-            data.frame(
-              Cluster = names(current_saved_list[[key]]$cluster),
-              Count = as.numeric(current_saved_list[[key]]$cluster)
-            )
-          },
+        {
+          data.frame(
+            Cluster = names(current_saved_list[[key]]$cluster),
+            Count = as.numeric(current_saved_list[[key]]$cluster)
+          )
+        },
           options = list(paging = FALSE),
           rownames = FALSE
         )
@@ -293,16 +326,18 @@ server <- function(input, output, session) {
               output[[paste0("violinPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$violin) # nolint
               output[[paste0("featurePlot", values$count)]] <- renderPlot(current_saved_list[[key]]$feature) # nolint
               output[[paste0("geneViolin", values$count)]] <- renderPlot(current_saved_list[[key]]$geneViolin) # nolint
+              output[[paste0("sankeyPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$sankey) # nolint
+              output[[paste0("umap_annotation", values$count)]] <- renderPlot(current_saved_list[[key]]$annotation_umap) # nolint
               output[[paste0("textoutput", values$count)]] <- renderText({
                 return("Current #Cells/Cluster")
               })
               output[[paste0("cluster_cell_counts", values$count)]] <- DT::renderDataTable( # nolint
-                {
-                  data.frame(
-                    Cluster = names(current_saved_list[[key]]$cluster),
-                    Count = as.numeric(current_saved_list[[key]]$cluster)
-                  )
-                },
+              {
+                data.frame(
+                  Cluster = names(current_saved_list[[key]]$cluster),
+                  Count = as.numeric(current_saved_list[[key]]$cluster)
+                )
+              },
                 options = list(paging = FALSE),
                 rownames = FALSE
               )
@@ -314,13 +349,13 @@ server <- function(input, output, session) {
                     column(
                       2,
                       numericInput("pc1", "PC",
-                        value = current_saved_list[[key]]$pc
+                                   value = current_saved_list[[key]]$pc
                       ),
                       numericInput("resolution1", "Resolution",
-                        value = current_saved_list[[key]]$resolution, step = 0.1
+                                   value = current_saved_list[[key]]$resolution, step = 0.1
                       ),
                       selectizeInput("gene1", "Genes",
-                        choices = current_saved_list[[key]]$gene
+                                     choices = current_saved_list[[key]]$gene
                       )
                     ),
                     column(
@@ -343,6 +378,16 @@ server <- function(input, output, session) {
                         column(
                           6,
                           plotOutput(paste0("geneViolin", values$count)),
+                        )
+                      ),
+                      fluidRow(
+                        # column(
+                        #   4,
+                        #   uiOutput(paste0("sankeyPlot", values$count))
+                        # ),
+                        column(
+                          4,
+                          plotOutput(paste0("umap_annotation", values$count))
                         )
                       )
                     ),
@@ -390,6 +435,25 @@ server <- function(input, output, session) {
     values$selected_gene <- input$gene
   })
 
+  observeEvent(input$annotate, {
+    show_modal_spinner(text = "updating annotations")
+    clusters_list <- strsplit(input$clusters, "\\s+")
+    if (input$annotation %in% values$annotations) {
+      for (cluster in clusters_list) {
+        values$annotations[[input$annotation]] <- append(values$annotations[[input$annotation]], cluster)
+      }
+    }
+    else {
+      values$annotations[[input$annotation]] = list()
+      for (cluster in clusters_list) {
+        values$annotations[[input$annotation]] <- append(values$annotations[[input$annotation]], cluster)
+      }
+    }
+    # for (cluster in clusters_list) {
+    #   values$annotation_show[[cluster]] <- input$annotation
+    # }
+  })
+
   observeEvent(values$obj, {
     if (!is.null(values$obj)) {
       updateSelectizeInput(
@@ -397,6 +461,7 @@ server <- function(input, output, session) {
         choices = rownames(values$obj),
         selected = values$selected_gene
       )
+      updateSelectInput(session, "clusters", choices = names(values$cluster_cell_counts))
     }
   })
 }

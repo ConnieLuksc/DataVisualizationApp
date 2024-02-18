@@ -54,7 +54,7 @@ create_metadata_UMAP <- function(obj, col, pc, resolution, values) {
     obj <- FindClusters(obj, resolution = resolution)
     obj <- RunUMAP(obj, dims = 1:pc)
     umap <- DimPlot(obj, pt.size = .1, label = FALSE, label.size = 4, group.by = col, reduction = "umap") # nolint: line_length_linter.
-    # remove_modal_spinner()
+    remove_modal_spinner()
     values$obj <- obj
     values$umap <- umap
     return(umap)
@@ -65,7 +65,7 @@ create_metadata_UMAP <- function(obj, col, pc, resolution, values) {
         geom_text(aes(x = 0.5, y = 0.5, label = str_wrap(err$message, width = 20)), size = 12, color = "gray73", fontface = "bold") + # nolint: line_length_linter.
         theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
       values$obj <- NULL
-      # remove_modal_spinner()
+      remove_modal_spinner()
       return(umap)
     }
   )
@@ -136,10 +136,7 @@ create_mds_plot <- function(obj, values) {
 }
 
 # visualize annotation
-create_annotation_UMAP <- function(obj, col, pc, resolution, values) {
-  # annotation list
-  annotation <- list(ambiguous = list(0), cd45.1 = list(1, 2), cd45.2 = list(3))
-
+create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation) {
   tryCatch(
   {
     obj <- FindNeighbors(obj, dims = 1:pc)
@@ -149,6 +146,9 @@ create_annotation_UMAP <- function(obj, col, pc, resolution, values) {
     new_metadata <- rep(NA, nrow(obj))
 
     # assign cluster with annotation
+    # for (cluster in names(annotation)) {
+    #   new_metadata[obj$seurat_clusters == cluster] <- annotation[[cluster]]
+    # }
     for (key in names(annotation)) {
       clusters <- unlist(annotation[[key]])
       for (cluster in clusters) {
@@ -182,17 +182,17 @@ create_annotation_UMAP <- function(obj, col, pc, resolution, values) {
         ) +
         theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
       values$obj <- NULL
-      remove_modal_spinner()
+      # remove_modal_spinner()
       return(umap)
     }
   )
 }
 
 # sankey plot
-create_sankey_plot <- function(obj, values, pc, resolution) {
+create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_num) {
+  # print(unlist(annotation))
   # obj <- FindNeighbors(obj, dims = 1:pc)
   # obj <- FindClusters(obj, resolution = resolution)
-  annotation <- list(ambiguous = list(0), cd45.1 = list(1, 2), cd45.2 = list(3))
   cluster_info <- as.data.frame(obj@active.ident)
   transitions <- data.frame(From = integer(), To = integer())
   # record transition
@@ -245,4 +245,5 @@ create_sankey_plot <- function(obj, values, pc, resolution) {
   )
   values$sankey <- sankey
   return(sankey)
+
 }
