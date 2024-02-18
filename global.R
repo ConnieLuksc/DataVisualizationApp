@@ -158,7 +158,6 @@ create_annotation_UMAP <- function(obj, col, pc, resolution, values) {
 
     # add new annotation data to seurat obj
     obj <- AddMetaData(obj, metadata = new_metadata, col.name = "Annotation")
-    Run
     obj <- RunUMAP(obj, dims = 1:pc)
     umap <- DimPlot(obj,
                     pt.size = .1, label = FALSE,
