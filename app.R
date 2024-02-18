@@ -1,8 +1,4 @@
 source('global.R')
-library(shiny)
-library(shinyjs)
-library(DT)
-library(purrr)
 
 # Define UI
 ui <- fluidPage(
@@ -36,6 +32,9 @@ ui <- fluidPage(
                    6,
                    plotOutput(outputId = 'violinPlotGene'),
                  )
+               ),
+               fluidRow(
+                plotOutput("heatmapPlot")
                )
         ),
         column(
@@ -128,6 +127,10 @@ server <- function(input, output, session) {
           create_violin_plot(values$obj, input$gene, values, ncol = NULL, pt.size = 0)
         }
       })
+
+    output$heatmapPlot <- renderPlot({
+        DimHeatmap(values$obj, dims = 1, cells = 500, balanced = TRUE)
+    })
 
       output$cluster_cell_counts <- DT::renderDataTable({
         cluster_ids <- Idents(values$obj)

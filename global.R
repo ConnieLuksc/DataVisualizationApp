@@ -14,6 +14,10 @@ library(markdown)
 library(ggthemes)
 library(stringr)
 library(patchwork)
+library(DT)
+library(purrr)
+
+
 
 
 # Read in file and perform validation.
@@ -93,3 +97,4 @@ create_violin_plot <- function(obj, gene, values, ncol, pt.size) {
     values$violin <- VP
     return(VP)
 }
+
