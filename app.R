@@ -14,17 +14,20 @@ ui <- fluidPage(
       "Tab 1",
       fluidRow(
         column(2,
-               fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
-               actionButton("reset", "Reset", class = "reset-btn"),
-               actionButton("run", "Run", class = "run-btn"),
-               numericInput("pc", "PC", value = NA),
-               numericInput("resolution", "Resolution", value = NA, step = 0.1),
-               div(style = "max-height: 200px; overflow-y: auto;", checkboxGroupInput("genes", "Genes", inline = TRUE)),
-               selectInput('clusters', 'Clusters', choices = NULL, multiple=TRUE, selectize=TRUE),
-               textInput("annotation", "Annotation"),
+              fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
+              actionButton("reset", "Reset", class = "reset-btn"),
+              actionButton("run", "Run", class = "run-btn"),
+              numericInput("pc", "PC", value = NA),
+              numericInput("resolution", "Resolution", value = NA, step = 0.1),
+              selectizeInput('genes_1', 'Genes', choices = NULL, multiple=TRUE),
+              selectizeInput('genes_2', NULL, choices = NULL, multiple=TRUE),
+              selectizeInput('genes_3', NULL, choices = NULL, multiple=TRUE),
+              selectizeInput('genes_4', NULL, choices = NULL, multiple=TRUE),
+              selectInput('clusters', 'Clusters', choices = NULL, multiple=TRUE, selectize=TRUE),
+              # textInput("annotation", "Annotation"),
               #  selectizeInput("gene", "Genes", choices = NULL),
-               actionButton("annotate", "Annotate"),
-               actionButton("save", "Save", class = "save-btn")
+              # actionButton("annotate", "Annotate"),
+              actionButton("save", "Save", class = "save-btn")
         ),
         column(8,
                fluidRow(
@@ -32,14 +35,16 @@ ui <- fluidPage(
                  column(7, plotOutput("umap")),
                ),
                fluidRow(
-                 column(
-                   6,
-                   plotOutput(outputId = 'featurePlot'),
-                 ),
-                 column(
-                   6,
-                   plotOutput(outputId = 'violinPlotGene'),
-                 )
+                 column(3,plotOutput(outputId = 'featurePlot_1', height = '225px')),
+                 column(3,plotOutput(outputId = 'featurePlot_2', height = '225px')),
+                 column(3,plotOutput(outputId = 'featurePlot_3', height = '225px')),
+                 column(3,plotOutput(outputId = 'featurePlot_4', height = '225px'))
+               ),
+               fluidRow(
+                column(3,plotOutput(outputId = 'violinPlotGene_1', height = '225px')),
+                column(3,plotOutput(outputId = 'violinPlotGene_2', height = '225px')),
+                column(3,plotOutput(outputId = 'violinPlotGene_3', height = '225px')),
+                column(3,plotOutput(outputId = 'violinPlotGene_4', height = '225px'))
                )
         ),
         column(
@@ -64,9 +69,7 @@ server <- function(input, output, session) {
   values$saved_list <- list()
   ignore_button_clicked <- FALSE
   values$count <- 2
-  # values$selected_gene <- NULL
-  values$selected_genes <- NULL
-  values$annotations <- list()
+  values$selected_genes <- list(genes_1=NULL, genes_2=NULL, genes_3=NULL, genes_4=NULL)
 
 
   updateUI <- function(enable = TRUE) {
@@ -114,11 +117,11 @@ server <- function(input, output, session) {
         }
       })
 
-      output$featurePlot <- renderPlot({
-        if (!is.null(input$genes)) {
-          create_feature_plot(values$obj, input$genes, values)
-        }
-      })
+      # output$featurePlot <- renderPlot({
+      #   if (!is.null(input$genes)) {
+      #     create_feature_plot(values$obj, input$genes, values)
+      #   }
+      # })
 
       output$violinPlot <- renderPlot({
           if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
@@ -129,11 +132,11 @@ server <- function(input, output, session) {
           }
       })
 
-      output$violinPlotGene <- renderPlot({
-        if (!is.null(input$genes)) {
-          create_violin_plot(values$obj, input$genes, values, ncol = NULL, pt.size = 0)
-        }
-      })
+      # output$violinPlotGene <- renderPlot({
+      #   if (!is.null(input$genes)) {
+      #     create_violin_plot(values$obj, input$genes, values, ncol = NULL, pt.size = 0)
+      #   }
+      # })
 
       output$cluster_cell_counts <- DT::renderDataTable({
         cluster_ids <- Idents(values$obj)
@@ -276,29 +279,35 @@ server <- function(input, output, session) {
     values$saved_list[[new_index]] <- saved_list_tmp
   })
 
-  observeEvent(input$annotate, {
-      clusters_list <- strsplit(input$clusters, "\\s+")
-      for(cluster in  clusters_list){
-        values$annotations[[cluster]] = input$annotation
-      }
-    #   for(i in seq_along(values$annotations)){
-    #   cluster <- names(values$annotations)[i]
-    #   item <- values$annotations[[cluster]]
-    #   print(paste("Cluster:", cluster, "| Annotation:", item))
-    # }
-    })
 
-  # observeEvent(input$gene, {
-  #   values$selected_gene <- input$gene
-  # })
-  observeEvent(input$genes, {
-    values$selected_genes <- input$genes
+  #feature plot and violin plot for gene
+  observeEvent(input$genes_1, {
+    output$featurePlot_1 <- renderPlot(create_feature_plot(values$obj, input$genes_1, values))
+    output$violinPlotGene_1 <- renderPlot(create_violin_plot(values$obj, input$genes_1, values, ncol = NULL, pt.size = 0))
+    values$selected_genes[["genes_1"]] = input$genes_1
+  })
+  observeEvent(input$genes_2, {
+    output$featurePlot_2 <- renderPlot(create_feature_plot(values$obj, input$genes_2, values))
+    output$violinPlotGene_2 <- renderPlot(create_violin_plot(values$obj, input$genes_2, values, ncol = NULL, pt.size = 0))
+    values$selected_genes[["genes_2"]] = input$genes_2 
+  })
+  observeEvent(input$genes_3, {
+    output$featurePlot_3 <- renderPlot(create_feature_plot(values$obj, input$genes_3, values))
+    output$violinPlotGene_3 <- renderPlot(create_violin_plot(values$obj, input$genes_3, values, ncol = NULL, pt.size = 0))
+    values$selected_genes[["genes_3"]] = input$genes_3 
+  })
+  observeEvent(input$genes_4, {
+    output$featurePlot_4 <- renderPlot(create_feature_plot(values$obj, input$genes_4, values))
+    output$violinPlotGene_4 <- renderPlot(create_violin_plot(values$obj, input$genes_4, values, ncol = NULL, pt.size = 0))
+    values$selected_genes[["genes_4"]] = input$genes_4 
   })
 
   observeEvent(values$obj, {
     if (!is.null(values$obj)) {
-      # updateSelectizeInput(session, "gene", choices = rownames(values$obj), selected = values$selected_gene)
-      updateCheckboxGroupInput(session, "genes", choices = rownames(values$obj), selected = values$selected_genes)
+      updateSelectizeInput(session, "genes_1", choices = rownames(values$obj), selected = values$selected_genes[["genes_1"]], server = TRUE)
+      updateSelectizeInput(session, "genes_2", choices = rownames(values$obj), selected = values$selected_genes[["genes_2"]], server = TRUE)
+      updateSelectizeInput(session, "genes_3", choices = rownames(values$obj), selected = values$selected_genes[["genes_3"]], server = TRUE)
+      updateSelectizeInput(session, "genes_4", choices = rownames(values$obj), selected = values$selected_genes[["genes_4"]], server = TRUE)
       updateSelectInput(session, "clusters", choices = names(values$cluster_cell_counts))
     }
   })

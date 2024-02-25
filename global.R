@@ -69,9 +69,13 @@ create_metadata_UMAP <- function(obj, col, pc, resolution, values){
 }
 
 create_feature_plot <- function(obj, genes, values) {
-    genes_list <- strsplit(genes, "\\s+")
-    obj <- AddModuleScore(obj, features = genes_list, name = "module")
-    FP <- FeaturePlot(obj, features = "module1", label = TRUE, repel = TRUE)
+    FP <- NULL
+    if(!is.null(genes)){
+        genes_list <- strsplit(genes, "\\s+")
+        obj <- AddModuleScore(obj, features = genes_list, name = "module")
+        FP <- FeaturePlot(obj, features = "module1", label = TRUE, repel = TRUE)   
+    }
+
 
     # if (gene %in% rownames(obj)) {
         # FP <- FeaturePlot(obj, features = gene, pt.size = 0.001, combine = FALSE)
@@ -86,14 +90,16 @@ create_feature_plot <- function(obj, genes, values) {
 }
 
 create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
-    genes_list <- strsplit(genes, "\\s+")
+    combined_plot <- NULL
     VP <- list()
 
-    for (gene in genes_list) {
-        VP[[gene]] <- VlnPlot(obj, features = gene, combine = TRUE)
-    }
-
-    combined_plot <- cowplot::plot_grid(plotlist = VP, ncol = length(genes_list))
+    if(!is.null(genes)){
+        genes_list <- strsplit(genes, "\\s+")
+        for (gene in genes_list) {
+            VP[[gene]] <- VlnPlot(obj, features = gene, combine = TRUE)
+        }
+        combined_plot <- cowplot::plot_grid(plotlist = VP, ncol = length(genes_list))
+    }    
 
     # if (gene %in% rownames(obj)) {
     #     VP <- VlnPlot(obj, features = gene, pt.size = 0, combine = FALSE)
