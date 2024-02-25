@@ -128,9 +128,47 @@ server <- function(input, output, session) {
         }
       })
 
-    output$heatmapPlot <- renderPlot({
-        DimHeatmap(values$obj, dims = 1, cells = 500, balanced = TRUE)
-    })
+
+      output$heatmapPlot <- renderPlot({
+        req(values$obj)
+        # Obtain variable genes
+        variable_genes <- Seurat::VariableFeatures(values$obj)
+        if (is.null(variable_genes) || length(variable_genes) == 0) {
+          stop("Variable features not found or the list is empty.")
+        }
+        # Aggregate expression data for variable genes
+        avg_expression <- AggregateExpression(values$obj, features = variable_genes, return.seurat = TRUE)
+        data_matrix <- GetAssayData(avg_expression, slot = "data")
+        if (!is.matrix(data_matrix) || !is.numeric(data_matrix)) {
+          stop("The data matrix is not numeric.")
+        }
+        # Determine clusters based on the dynamic input
+        cluster_assignments <- Idents(values$obj)
+        # Find all unique cluster IDs
+        all_clusters <- unique(cluster_assignments)
+        print(paste("Unique cluster IDs:", paste(all_clusters, collapse = ", ")))
+        print(paste("Column names in data_matrix:", paste(colnames(data_matrix), collapse = ", ")))
+        # Check that data_matrix is not empty after potential subsetting (if needed)
+        if (ncol(data_matrix) == 0) {
+          stop("The data matrix has no columns.")
+        }
+        # Calculate the standard deviation for each gene and filter out the genes with zero standard deviation
+        non_zero_variance_genes <- apply(data_matrix, 1, var, na.rm = TRUE) > 0
+        data_matrix <- data_matrix[non_zero_variance_genes, ]
+        # Check that data_matrix is not empty after filtering for non-zero variance genes
+        if (nrow(data_matrix) == 0) {
+          stop("No variable genes found with non-zero variance.")
+        }
+        # Calculate the correlation matrix on the subsetted data, handling any remaining NAs
+        correlation_matrix <- cor(data_matrix, use="pairwise.complete.obs")
+        # Plot the heatmap
+        pheatmap(correlation_matrix,
+                clustering_distance_rows = "euclidean",
+                clustering_distance_cols = "euclidean",
+                clustering_method = "complete",
+                color = colorRampPalette(c("yellow", "orange", "red"))(50))
+      })
+
 
       output$cluster_cell_counts <- DT::renderDataTable({
         cluster_ids <- Idents(values$obj)
