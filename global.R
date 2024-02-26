@@ -15,6 +15,7 @@ library(ggthemes)
 library(stringr)
 library(patchwork)
 library(networkD3)
+library(edgeR)
 
 
 # Read in file and perform validation.
@@ -42,6 +43,18 @@ load_seurat_obj <- function(path) {
     errors <- c(errors, "File is not a seurat object")
     return(errors)
   }
+
+  # mock annotation column in metadata
+  annotation <- list(ambiguous = list(0, 8), cd45.1 = list(1, 3), cd45.2 = list(2, 4, 6), cd45.3 = list(5, 7))
+  new_metadata <- rep(NA, nrow(obj))
+  # assign cluster with annotation
+  for (key in names(annotation)) {
+    clusters <- unlist(annotation[[key]])
+    for (cluster in clusters) {
+      new_metadata[obj$seurat_clusters == cluster] <- key
+    }
+  }
+  obj <- AddMetaData(obj, metadata = new_metadata, col.name = "Annotation")
 
   return(obj)
 }
@@ -99,40 +112,23 @@ create_violin_plot <- function(obj, gene, values, ncol, pt.size) {
 }
 
 create_mds_plot <- function(obj, values) {
-  # representative_cells <- data.frame()
-  # for (cluster_id in unique(Idents(values$obj))) {
-  #   cluster_cells <- Idents(obj) == cluster_id
-  #   # print(cluster_cells)
-  #   cluster_data <- obj[, cluster_cells]
-  #   print(str(cluster_data))
-  #   representative_cell <- as.data.frame(t(as.matrix(GetAssayData(object = cluster_data, assay = "RNA"))[1 ,])) # 选择第一个细胞作为代表性细胞，你也可以根据自己的需求选择
-  #   print(as.character(rownames(representative_cell)))
-  #   rownames(representative_cell) <- rownames(cluster_data)[1]
-  #   # print(str(obj))
-  #   representative_cells <- rbind(representative_cells, representative_cell)
-  # }
-  # print(rownames(representative_cells))
-  # first_cells <- data.frame(cluster_id = character(), cell_name = character(), stringsAsFactors = FALSE)
-  #
-  # for (cluster_id in unique(Idents(obj))) {
-  #   cluster_cells <- which(Idents(obj) == cluster_id)
-  #   first_cell_index <- cluster_cells[1]
-  #   first_cell_name <- colnames(obj)[first_cell_index]
-  #
-  #   first_cells <- rbind(first_cells, data.frame(cluster_id = cluster_id, cell_name = first_cell_name))
-  # }
-  #
-  # print(first_cells$cell_name)
-  # data <- GetAssayData(object = obj, cells = first_cells$cell_name)
-  # print(data)
-  # distances <- dist(data, method = "euclidean")
-  # print(distances)
-  #
-  # mds_result <- isoMDS(distances, k = 2)
-  #
-  # plot(mds_result$points, type = "n", xlab = "MDS Dimension 1", ylab = "MDS Dimension 2", main = "MDS Plot of Seurat Clusters")
-  # points(mds_result$points, col = rainbow(length(unique(seurat_obj$meta.data$cluster))), pch = 16)
-  # legend("topright", legend = unique(seurat_obj$meta.data$cluster), col = rainbow(length(unique(seurat_obj$meta.data$cluster))), pch = 16, title = "Clusters")
+  # aggregate
+  all_genes <- AggregateExpression(obj)
+
+  # create a deglist object
+  gene_names <- rownames(obj@assays$RNA)
+  dge_data <- DGEList(counts = all_genes$RNA)
+  dge_data$genes <- gene_names
+
+  # create MDS plot
+  set.seed(123)
+  colors <- rainbow(length(colnames(all_genes$RNA)))
+  # mdsPlot <- plotMDS(dge_data, col = colors)
+  mdsPlot <- plotMDS(dge_data, col = colors, pch=20, cex=2)
+  legend("topright", legend = colnames(all_genes$RNA), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
+  title("MDS Plot")
+  values$mds <- mdsPlot
+  return (mdsPlot)
 }
 
 # visualize annotation
@@ -141,23 +137,6 @@ create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation)
   {
     obj <- FindNeighbors(obj, dims = 1:pc)
     obj <- FindClusters(obj, resolution = resolution)
-
-    # create new metadata
-    new_metadata <- rep(NA, nrow(obj))
-
-    # assign cluster with annotation
-    # for (cluster in names(annotation)) {
-    #   new_metadata[obj$seurat_clusters == cluster] <- annotation[[cluster]]
-    # }
-    for (key in names(annotation)) {
-      clusters <- unlist(annotation[[key]])
-      for (cluster in clusters) {
-        new_metadata[obj$seurat_clusters == cluster] <- key
-      }
-    }
-
-    # add new annotation data to seurat obj
-    obj <- AddMetaData(obj, metadata = new_metadata, col.name = "Annotation")
     obj <- RunUMAP(obj, dims = 1:pc)
     umap <- DimPlot(obj,
                     pt.size = .1, label = FALSE,
@@ -190,16 +169,17 @@ create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation)
 
 # sankey plot
 create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_num) {
-  # print(unlist(annotation))
   # obj <- FindNeighbors(obj, dims = 1:pc)
   # obj <- FindClusters(obj, resolution = resolution)
-  cluster_info <- as.data.frame(obj@active.ident)
-  transitions <- data.frame(From = integer(), To = integer())
+  cluster_info <- as.data.frame(obj$seurat_clusters)
+  annotation_info <- as.data.frame(obj$Annotation)
+  transitions <- data.frame(From = character(), To = character())
+
   # record transition
-  for (i in 2:nrow(cluster_info)) {
-    from_cluster <- cluster_info[i - 1, 1]
-    to_cluster <- cluster_info[i, 1]
-    transition <- data.frame(From = from_cluster, To = to_cluster)
+  for (i in 0:nrow(cluster_info)) {
+    cluster <- cluster_info[i, 1]
+    annotation <- annotation_info[i, 1]
+    transition <- data.frame(Cluster = cluster, Annotation = annotation)
     transitions <- rbind(transitions, transition)
   }
 
@@ -209,28 +189,15 @@ create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_
   # create transition
   transition_data <- data.frame(transition_counts)
   colnames(transition_data) <- c("From", "To", "Value")
-  transition_data$From <- as.integer(as.character(transition_data$From))
-  transition_data$To <- as.integer(as.character(transition_data$To))
+  transition_data$From <- as.integer(transition_data$From) - 1
+  transition_data$To <- as.character(transition_data$To)
+  for (i in seq_along(transition_data$To)) {
+    transition_data$To[i] <- as.character(which(colnames(transition_counts) == transition_data$To[i]))
+  }
+  transition_data$To <- as.integer(transition_data$To) + as.integer(length(rownames(transition_counts))) - 1
 
   # Nodes parameter
-  all_nodes <- data.frame(name = c(
-    as.character(unique(transition_data$From)),
-    as.character(names(annotation))
-  ))
-
-  # adjust to list
-  num_clusters <- length(unique(obj@active.ident))
-  for (i in seq_along(transition_data$To)) {
-    for (cluster in 0:num_clusters) {
-      if (transition_data$To[i] == cluster) {
-        transition_data$To[i] <- num_clusters - 1 + as.numeric(
-          which(sapply(annotation, function(x) cluster %in% x))[1]
-        )
-        break
-      }
-    }
-  }
-  transition_data$To <- as.integer(transition_data$To)
+  all_nodes <- data.frame(name = c(as.character(rownames(transition_counts)), as.character(colnames(transition_counts))))
 
   # create sankey
   sankey <- sankeyNetwork(
@@ -240,8 +207,8 @@ create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_
     Target = "To",
     Value = "Value",
     units = "Cell Counts",
-    width = 400,
-    height = 200
+    width = 600,
+    height = 400
   )
   values$sankey <- sankey
   return(sankey)

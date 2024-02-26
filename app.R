@@ -181,30 +181,7 @@ server <- function(input, output, session) {
       })
 
       output$umap_annotation <- renderPlot({
-        if (length(values$annotations) > 0) {
           create_annotation_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values, values$annotations)
-        } else {
-          values$umap_annotation <- ggplot() +
-            theme_void() +
-            geom_text(
-              aes(
-                x = 0.5, y = 0.5,
-                label = str_wrap("Annotations unavailable", width = 20)
-              ),
-              size = 12, color = "gray73", fontface = "bold"
-            ) +
-            theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
-          ggplot() +
-            theme_void() +
-            geom_text(
-              aes(
-                x = 0.5, y = 0.5,
-                label = str_wrap("Annotations unavailable", width = 20)
-              ),
-              size = 12, color = "gray73", fontface = "bold"
-            ) +
-            theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
-        }
       })
 
       output$unavailable_sankey <- renderPlot({
@@ -221,13 +198,7 @@ server <- function(input, output, session) {
       })
 
       output$sankeyPlot <- renderUI({
-        if (length(names(values$cluster_cell_counts)) == length(unique(unlist(values$annotations)))) {
           create_sankey_plot(values$obj, values, input$pc, input$resolution, values$annotations, values$cluster_cell_counts)
-        }
-        else {
-          plotOutput("unavailable_sankey")
-          values$sankey <- plotOutput("unavailable_sankey")
-        }
       })
 
 
@@ -326,7 +297,9 @@ server <- function(input, output, session) {
               output[[paste0("violinPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$violin) # nolint
               output[[paste0("featurePlot", values$count)]] <- renderPlot(current_saved_list[[key]]$feature) # nolint
               output[[paste0("geneViolin", values$count)]] <- renderPlot(current_saved_list[[key]]$geneViolin) # nolint
-              output[[paste0("sankeyPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$sankey) # nolint
+              output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
+              output[[paste0("mdsPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$plotmds)
+              print(current_saved_list[[key]]$plotmds)
               output[[paste0("umap_annotation", values$count)]] <- renderPlot(current_saved_list[[key]]$annotation_umap) # nolint
               output[[paste0("textoutput", values$count)]] <- renderText({
                 return("Current #Cells/Cluster")
@@ -373,18 +346,22 @@ server <- function(input, output, session) {
                       fluidRow(
                         column(
                           6,
-                          plotOutput(paste0("featurePlot", values$count)),
+                          plotOutput(paste0("featurePlot", values$count))
                         ),
                         column(
                           6,
-                          plotOutput(paste0("geneViolin", values$count)),
-                        )
+                          plotOutput(paste0("geneViolin", values$count))
+                        ),
                       ),
                       fluidRow(
-                        # column(
-                        #   4,
-                        #   uiOutput(paste0("sankeyPlot", values$count))
-                        # ),
+                        column(
+                          4,
+                          plotOutput(paste0("mdsPlot", values$count))
+                        ),
+                        column(
+                          4,
+                          uiOutput(paste0("sankeyPlot", values$count))
+                        ),
                         column(
                           4,
                           plotOutput(paste0("umap_annotation", values$count))
@@ -426,7 +403,7 @@ server <- function(input, output, session) {
       cluster = values$cluster_cell_counts, umap = values$umap,
       violin = values$violinPlot, feature = values$feature,
       geneViolin = values$violin, annotation_umap = values$umap_annotation,
-      sankey = values$sankey
+      sankey = values$sankey, plotmds = values$mds
     )
     values$saved_list[[new_index]] <- saved_list_tmp
   })
