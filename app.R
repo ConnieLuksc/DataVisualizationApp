@@ -40,7 +40,7 @@ ui <- fluidPage(
             column(
               4,
               plotOutput("heatmapPlot")
-            )
+            ),
             column(
               4,
               plotOutput(outputId = "mdsPlot")
@@ -190,11 +190,12 @@ server <- function(input, output, session) {
         # Calculate the correlation matrix on the subsetted data, handling any remaining NAs
         correlation_matrix <- cor(data_matrix, use="pairwise.complete.obs")
         # Plot the heatmap
-        pheatmap(correlation_matrix,
-                clustering_distance_rows = "euclidean",
-                clustering_distance_cols = "euclidean",
-                clustering_method = "complete",
-                color = colorRampPalette(c("yellow", "orange", "red"))(50))
+        values$heatmap <- pheatmap(correlation_matrix,
+                          clustering_distance_rows = "euclidean",
+                          clustering_distance_cols = "euclidean",
+                          clustering_method = "complete",
+                          color = colorRampPalette(c("yellow", "orange", "red"))(50))
+        values$heatmap
       })
 
 
@@ -336,6 +337,7 @@ server <- function(input, output, session) {
               output[[paste0("featurePlot", values$count)]] <- renderPlot(current_saved_list[[key]]$feature) # nolint
               output[[paste0("geneViolin", values$count)]] <- renderPlot(current_saved_list[[key]]$geneViolin) # nolint
               output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
+              output[[paste0("heatmapPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$heatmap)
               output[[paste0("mdsPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$plotmds)
               print(current_saved_list[[key]]$plotmds)
               output[[paste0("umap_annotation", values$count)]] <- renderPlot(current_saved_list[[key]]$annotation_umap) # nolint
@@ -394,58 +396,8 @@ server <- function(input, output, session) {
                       fluidRow(
                         column(
                           4,
-                          plotOutput(paste0("mdsPlot", values$count))
+                          plotOutput(paste0("heatmapPlot", values$count))
                         ),
-                        column(
-                          4,
-                          uiOutput(paste0("sankeyPlot", values$count))
-                        ),
-                        column(
-                          4,
-                          plotOutput(paste0("umap_annotation", values$count))
-                        )
-                      )
-                    ),
-<<<<<<< HEAD
-                    column(8,
-                           fluidRow(
-                             column(5, plotOutput(paste0("violinPlot", values$count))),
-                             column(7, plotOutput(paste0("umap", values$count))),
-                           ),
-                           fluidRow(
-                             column(
-                               6,
-                               plotOutput(paste0("featurePlot", values$count)),
-                             ),
-                             column(
-                               6,
-                               plotOutput(paste0("geneViolin", values$count)),
-                             )
-                           )
-=======
-                    column(
-                      8,
-                      fluidRow(
-                        column(
-                          7,
-                          plotOutput(paste0("violinPlot", values$count))
-                        ),
-                        column(
-                          5,
-                          plotOutput(paste0("umap", values$count))
-                        ),
-                      ),
-                      fluidRow(
-                        column(
-                          6,
-                          plotOutput(paste0("featurePlot", values$count))
-                        ),
-                        column(
-                          6,
-                          plotOutput(paste0("geneViolin", values$count))
-                        ),
-                      ),
-                      fluidRow(
                         column(
                           4,
                           plotOutput(paste0("mdsPlot", values$count))
@@ -459,7 +411,6 @@ server <- function(input, output, session) {
                           plotOutput(paste0("umap_annotation", values$count))
                         )
                       )
->>>>>>> origin/Ruiyang_Peng
                     ),
                     column(
                       width = 2,
@@ -495,6 +446,7 @@ server <- function(input, output, session) {
       resolution = input$resolution, gene = input$gene,
       cluster = values$cluster_cell_counts, umap = values$umap,
       violin = values$violinPlot, feature = values$feature,
+      heatmap = values$heatmap,
       geneViolin = values$violin, annotation_umap = values$umap_annotation,
       sankey = values$sankey, plotmds = values$mds
     )

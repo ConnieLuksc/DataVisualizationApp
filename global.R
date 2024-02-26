@@ -108,6 +108,53 @@ create_violin_plot <- function(obj, gene, values, ncol, pt.size) {
     }else{
         VP <- ggplot() +
         theme_void() +
+        geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
+        theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+    }
+    values$violin <- VP
+    return(VP)
+}
+
+create_mds_plot <- function(obj, values) {
+  # aggregate
+  all_genes <- AggregateExpression(obj)
+
+  # create a deglist object
+  gene_names <- rownames(obj@assays$RNA)
+  dge_data <- DGEList(counts = all_genes$RNA)
+  dge_data$genes <- gene_names
+
+  # create MDS plot
+  set.seed(123)
+  colors <- rainbow(length(colnames(all_genes$RNA)))
+  # mdsPlot <- plotMDS(dge_data, col = colors)
+  mdsPlot <- plotMDS(dge_data, col = colors, pch=20, cex=2)
+  legend("topright", legend = colnames(all_genes$RNA), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
+  title("MDS Plot")
+  values$mds <- mdsPlot
+  return (mdsPlot)
+}
+
+# visualize annotation
+create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation) {
+  tryCatch(
+  {
+    obj <- FindNeighbors(obj, dims = 1:pc)
+    obj <- FindClusters(obj, resolution = resolution)
+    obj <- RunUMAP(obj, dims = 1:pc)
+    umap <- DimPlot(obj,
+                    pt.size = .1, label = FALSE,
+                    label.size = 4, group.by = "Annotation",
+                    reduction = "umap"
+    )
+    remove_modal_spinner()
+    values$obj <- obj
+    values$umap_annotation <- umap
+    return(umap)
+  },
+    error = function(err) {
+      umap <- ggplot() +
+        theme_void() +
         geom_text(
           aes(
             x = 0.5, y = 0.5,
@@ -121,6 +168,7 @@ create_violin_plot <- function(obj, gene, values, ncol, pt.size) {
       # remove_modal_spinner()
       return(umap)
     }
+  )
 }
 
 # sankey plot
