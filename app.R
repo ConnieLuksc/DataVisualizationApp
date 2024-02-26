@@ -9,33 +9,51 @@ ui <- fluidPage(
     tabPanel(
       "Tab 1",
       fluidRow(
-        column(2,
-               fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
-               actionButton("reset", "Reset", class = "reset-btn"),
-               actionButton("run", "Run", class = "run-btn"),
-               numericInput("pc", "PC", value = NA),
-               numericInput("resolution", "Resolution", value = NA, step = 0.1),
-               selectizeInput("gene", "Genes", choices = NULL),
-               actionButton("save", "Save", class = "save-btn")
+        column(
+          2,
+          fileInput("file", "Upload File", multiple = TRUE, accept = c(".rds")),
+          actionButton("reset", "Reset", class = "reset-btn"),
+          actionButton("run", "Run", class = "run-btn"),
+          numericInput("pc", "PC", value = NA),
+          numericInput("resolution", "Resolution", value = NA, step = 0.1),
+          selectizeInput("gene", "Genes", choices = NULL),
+          selectInput('clusters', 'Clusters', choices = NULL, multiple = TRUE, selectize = TRUE),
+          textInput("annotation", "Annotation"),
+          actionButton("annotate", "Annotate"),
+          actionButton("save", "Save", class = "save-btn")
         ),
-        column(8,
-               fluidRow(
-                 column(5, plotOutput("violinPlot")),
-                 column(7, plotOutput("umap")),
-               ),
-               fluidRow(
-                 column(
-                   6,
-                   plotOutput(outputId = 'featurePlot'),
-                 ),
-                 column(
-                   6,
-                   plotOutput(outputId = 'violinPlotGene'),
-                 )
-               ),
-               fluidRow(
-                plotOutput("heatmapPlot")
-               )
+        column(
+          8,
+          fluidRow(
+            column(5, plotOutput("violinPlot")),
+            column(7, plotOutput("umap")),
+          ),
+          fluidRow(
+            column(
+              4,
+              plotOutput(outputId = "featurePlot"),
+            ),
+            column(
+              4,
+              plotOutput(outputId = "violinPlotGene"),
+            ),
+            column(
+              4,
+              plotOutput("heatmapPlot")
+            )
+            column(
+              4,
+              plotOutput(outputId = "mdsPlot")
+            ),
+            column(
+              4,
+              uiOutput(outputId = "sankeyPlot")
+            ),
+            column(
+              4,
+              plotOutput(outputId = "umap_annotation")
+            )
+          )
         ),
         column(
           width = 2,
@@ -60,6 +78,9 @@ server <- function(input, output, session) {
   ignore_button_clicked <- FALSE
   values$count <- 2
   values$selected_gene <- NULL
+  values$annotations <- list()
+  values$cluster_num <- 0
+  values$annotation_show <- reactive({ rep("NA", times = values$cluster_num) })
 
 
   updateUI <- function(enable = TRUE) {
@@ -71,6 +92,7 @@ server <- function(input, output, session) {
       shinyjs::disable("run")
       shinyjs::disable("pc")
       shinyjs::disable("resolution")
+      shinyjs::disable("save")
     }
   }
 
@@ -98,11 +120,15 @@ server <- function(input, output, session) {
       output$umap <- renderPlot({
         if (!is.na(input$pc) && !is.na(input$resolution)) {
           show_modal_spinner(text = "Preparing plots...")
-          create_metadata_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values)
-        }else {
+          create_metadata_UMAP(
+            obj, "seurat_clusters",
+            input$pc, input$resolution,
+            values
+          )
+        } else {
           ggplot() +
             theme_void() +
-            geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Please input the parameters", width = 20)), size = 12, color = "gray73", fontface = "bold") +
+            geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Please input the parameters", width = 20)), size = 12, color = "gray73", fontface = "bold") + # nolint
             theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
         }
       })
@@ -124,7 +150,9 @@ server <- function(input, output, session) {
 
       output$violinPlotGene <- renderPlot({
         if (!is.null(input$gene)) {
-          create_violin_plot(values$obj, input$gene, values, ncol = NULL, pt.size = 0)
+          create_violin_plot(values$obj, input$gene, values,
+                             ncol = NULL, pt.size = 0
+          )
         }
       })
 
@@ -173,15 +201,52 @@ server <- function(input, output, session) {
       output$cluster_cell_counts <- DT::renderDataTable({
         cluster_ids <- Idents(values$obj)
         values$cluster_cell_counts <- table(cluster_ids)
-        data.frame(Cluster = names(values$cluster_cell_counts), Count = as.numeric(values$cluster_cell_counts))
-      }, options = list(paging = FALSE, rownames = FALSE))
+        values$cluster_num <- length(names(values$cluster_cell_counts))
+        data.frame(
+          Cluster = names(values$cluster_cell_counts),
+          # Annotation = values$annotation_show,
+          Count = as.numeric(values$cluster_cell_counts)
+        )
+      },
+        options = list(paging = FALSE),
+        rownames = FALSE
+      )
+
+      output$mdsPlot <- renderPlot({
+        if (!is.null(values$obj)) {
+          create_mds_plot(values$obj, values)
+        }
+      })
+
+      output$umap_annotation <- renderPlot({
+          create_annotation_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values, values$annotations)
+      })
+
+      output$unavailable_sankey <- renderPlot({
+        ggplot() +
+          theme_void() +
+          geom_text(
+            aes(
+              x = 0.5, y = 0.5,
+              label = str_wrap("Annotations missing", width = 20)
+            ),
+            size = 12, color = "gray73", fontface = "bold"
+          ) +
+          theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+      })
+
+      output$sankeyPlot <- renderUI({
+          create_sankey_plot(values$obj, values, input$pc, input$resolution, values$annotations, values$cluster_cell_counts)
+      })
 
 
       output$text_output <- renderText({
+        remove_modal_spinner()
         return("Current #Cells/Cluster")
       })
 
       shinyjs::enable("run")
+      shinyjs::enable("save")
     }
   })
 
@@ -191,10 +256,21 @@ server <- function(input, output, session) {
     shinyjs::reset("file")
 
     # Clear plots and disable the 'Run' button
-    output$umap <- renderPlot({ NULL })
-    output$featurePlot <- renderPlot({ NULL })
-    output$violinPlot <- renderPlot({ NULL })
-    output$violinPlotGene <- renderPlot({ NULL })
+    output$umap <- renderPlot({
+      NULL
+    })
+    output$featurePlot <- renderPlot({
+      NULL
+    })
+    output$violinPlot <- renderPlot({
+      NULL
+    })
+    output$violinPlotGene <- renderPlot({
+      NULL
+    })
+    output$mdsPlot <- renderPlot({
+      NULL
+    })
 
     shinyjs::disable("run")
   })
@@ -207,28 +283,45 @@ server <- function(input, output, session) {
 
       # update saved area part
       output$dynamic_elements <- renderUI({
-        dynamic_elements <- lapply(seq_along(current_saved_list), function(key) {
-          fluidRow(
-            column(
-              width = 12,
-              actionButton(inputId = paste0("button_", key), label = paste("PC: ", current_saved_list[[key]]$pc, " Resolution: ", current_saved_list[[key]]$resolution)),
-              # verbatimTextOutput(outputId = paste0("verbatim_output_", key))
-              DT::dataTableOutput(outputId = paste0("verbatim_output_", key))
-
+        dynamic_elements <- lapply(
+          seq_along(current_saved_list),
+          function(key) {
+            fluidRow(
+              column(
+                width = 12,
+                actionButton(
+                  inputId = paste0("button_", key),
+                  label = paste(
+                    "PC: ", current_saved_list[[key]]$pc,
+                    " Resolution: ", current_saved_list[[key]]$resolution,
+                    "Gene: ", current_saved_list[[key]]$gene
+                  )
+                ),
+                DT::dataTableOutput(outputId = paste0("verbatim_output_", key))
+              )
             )
-          )
+          }
+        )
+        # add margin
+        div_with_margin <- lapply(dynamic_elements, function(elem) {
+          div(style = "margin-top: 20px;", elem)
         })
-        do.call(tagList, dynamic_elements)
+
+        do.call(tagList, div_with_margin)
+        # do.call(tagList, dynamic_elements) # nolint
       })
 
       lapply(seq_along(current_saved_list), function(key) {
-        # output[[paste0("verbatim_output_", key)]] <- renderPrint({
-        #     cat("Saved #Cell/Cluster", key, ": ", current_saved_list[[key]]$cluster)
-        # })
-
-        output[[paste0("verbatim_output_", key)]] <- DT::renderDataTable({
-          data.frame(Cluster = names(current_saved_list[[key]]$cluster), Count = as.numeric(current_saved_list[[key]]$cluster))
-        }, options = list(paging = FALSE, rownames = FALSE))
+        output[[paste0("verbatim_output_", key)]] <- DT::renderDataTable(
+        {
+          data.frame(
+            Cluster = names(current_saved_list[[key]]$cluster),
+            Count = as.numeric(current_saved_list[[key]]$cluster)
+          )
+        },
+          options = list(paging = FALSE),
+          rownames = FALSE
+        )
 
         observeEvent(input[[paste0("button_", key)]], {
           print("button")
@@ -237,29 +330,83 @@ server <- function(input, output, session) {
             print("loaded")
             loaded_seurat <- load_seurat_obj(current_saved_list[[key]]$file)
             if (!is.vector(loaded_seurat)) {
-              # values$obj <- loaded_seurat
-              # updateNumericInput(session, "pc", value = current_saved_list[[key]]$pc)
-              # updateNumericInput(session, "resolution", value = current_saved_list[[key]]$resolution)
-              output[[paste0("umap", values$count)]] <- renderPlot(current_saved_list[[key]]$umap)
-              output[[paste0("violinPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$violin)
-              output[[paste0("featurePlot", values$count)]] <- renderPlot(current_saved_list[[key]]$feature)
-              output[[paste0("geneViolin", values$count)]] <- renderPlot(current_saved_list[[key]]$geneViolin)
-              output[[paste0("textoutput", values$count)]] <- renderText({ return("Current #Cells/Cluster") })
-              output[[paste0("cluster_cell_counts", values$count)]] <- DT::renderDataTable({
-                cluster_ids <- Idents(values$obj)
-                counts <- table(cluster_ids)
-                data.frame(Cluster = names(counts), Count = as.numeric(counts))
-              }, options = list(paging = FALSE))
-              print(is.null(current_saved_list[[key]]$umap))
+              # values$obj <- loaded_seurat # nolint
+              output[[paste0("umap", values$count)]] <- renderPlot(current_saved_list[[key]]$umap) # nolint
+              output[[paste0("violinPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$violin) # nolint
+              output[[paste0("featurePlot", values$count)]] <- renderPlot(current_saved_list[[key]]$feature) # nolint
+              output[[paste0("geneViolin", values$count)]] <- renderPlot(current_saved_list[[key]]$geneViolin) # nolint
+              output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
+              output[[paste0("mdsPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$plotmds)
+              print(current_saved_list[[key]]$plotmds)
+              output[[paste0("umap_annotation", values$count)]] <- renderPlot(current_saved_list[[key]]$annotation_umap) # nolint
+              output[[paste0("textoutput", values$count)]] <- renderText({
+                return("Current #Cells/Cluster")
+              })
+              output[[paste0("cluster_cell_counts", values$count)]] <- DT::renderDataTable( # nolint
+              {
+                data.frame(
+                  Cluster = names(current_saved_list[[key]]$cluster),
+                  Count = as.numeric(current_saved_list[[key]]$cluster)
+                )
+              },
+                options = list(paging = FALSE),
+                rownames = FALSE
+              )
               insertTab(
                 inputId = "main_tabs",
                 tabPanel(
                   paste("Tab", values$count),
                   fluidRow(
-                    column(2,
-                           numericInput("pc", "PC", value = current_saved_list[[key]]$pc),
-                           numericInput("resolution", "Resolution", value = current_saved_list[[key]]$resolution, step = 0.1),
+                    column(
+                      2,
+                      numericInput("pc1", "PC",
+                                   value = current_saved_list[[key]]$pc
+                      ),
+                      numericInput("resolution1", "Resolution",
+                                   value = current_saved_list[[key]]$resolution, step = 0.1
+                      ),
+                      selectizeInput("gene1", "Genes",
+                                     choices = current_saved_list[[key]]$gene
+                      )
                     ),
+                    column(
+                      8,
+                      fluidRow(
+                        column(
+                          5,
+                          plotOutput(paste0("violinPlot", values$count))
+                        ),
+                        column(
+                          7,
+                          plotOutput(paste0("umap", values$count))
+                        ),
+                      ),
+                      fluidRow(
+                        column(
+                          6,
+                          plotOutput(paste0("featurePlot", values$count))
+                        ),
+                        column(
+                          6,
+                          plotOutput(paste0("geneViolin", values$count))
+                        ),
+                      ),
+                      fluidRow(
+                        column(
+                          4,
+                          plotOutput(paste0("mdsPlot", values$count))
+                        ),
+                        column(
+                          4,
+                          uiOutput(paste0("sankeyPlot", values$count))
+                        ),
+                        column(
+                          4,
+                          plotOutput(paste0("umap_annotation", values$count))
+                        )
+                      )
+                    ),
+<<<<<<< HEAD
                     column(8,
                            fluidRow(
                              column(5, plotOutput(paste0("violinPlot", values$count))),
@@ -275,23 +422,61 @@ server <- function(input, output, session) {
                                plotOutput(paste0("geneViolin", values$count)),
                              )
                            )
+=======
+                    column(
+                      8,
+                      fluidRow(
+                        column(
+                          7,
+                          plotOutput(paste0("violinPlot", values$count))
+                        ),
+                        column(
+                          5,
+                          plotOutput(paste0("umap", values$count))
+                        ),
+                      ),
+                      fluidRow(
+                        column(
+                          6,
+                          plotOutput(paste0("featurePlot", values$count))
+                        ),
+                        column(
+                          6,
+                          plotOutput(paste0("geneViolin", values$count))
+                        ),
+                      ),
+                      fluidRow(
+                        column(
+                          4,
+                          plotOutput(paste0("mdsPlot", values$count))
+                        ),
+                        column(
+                          4,
+                          uiOutput(paste0("sankeyPlot", values$count))
+                        ),
+                        column(
+                          4,
+                          plotOutput(paste0("umap_annotation", values$count))
+                        )
+                      )
+>>>>>>> origin/Ruiyang_Peng
                     ),
                     column(
                       width = 2,
                       style = "overflow-y: scroll; max-height: 600px;",
                       textOutput(paste0("textoutput", values$count)),
-                      # verbatimTextOutput("cluster_cell_counts"),
-                      DT::dataTableOutput(paste0("cluster_cell_counts", values$count)),
-                      # uiOutput("dynamic_elements")
+                      DT::dataTableOutput(
+                        paste0("cluster_cell_counts", values$count)
+                      ),
                     )
-
                   )
                 ),
                 select = TRUE,
-                # closable = TRUE,
               )
+              shinyjs::runjs('$("#pc1").prop("disabled", true);')
+              shinyjs::runjs('$("#gene1").prop("disabled", true);')
+              shinyjs::runjs('$("#resolution1").prop("disabled", true);')
               values$count <- values$count + 1
-              # shinyjs::runjs('$("#run").click();')
             }
           }
           ignore_button_clicked <<- FALSE
@@ -305,20 +490,48 @@ server <- function(input, output, session) {
     print("save")
     print(ignore_button_clicked)
     new_index <- paste0("item", length(values$saved_list) + 1)
-    # saved_list_tmp <- list(file = input$file$datapath, pc = input$pc, resolution = input$resolution, cluster = values$result_text)
-    # values&umap <- output$umap()
-    saved_list_tmp <- list(file = input$file$datapath, pc = input$pc, resolution = input$resolution, cluster = values$cluster_cell_counts, umap = values$umap, violin = values$violinPlot, feature = values$feature, geneViolin = values$violin)
+    saved_list_tmp <- list(
+      file = input$file$datapath, pc = input$pc,
+      resolution = input$resolution, gene = input$gene,
+      cluster = values$cluster_cell_counts, umap = values$umap,
+      violin = values$violinPlot, feature = values$feature,
+      geneViolin = values$violin, annotation_umap = values$umap_annotation,
+      sankey = values$sankey, plotmds = values$mds
+    )
     values$saved_list[[new_index]] <- saved_list_tmp
-    # print(values$saved_list)
   })
 
   observeEvent(input$gene, {
     values$selected_gene <- input$gene
   })
 
+  observeEvent(input$annotate, {
+    show_modal_spinner(text = "updating annotations")
+    clusters_list <- strsplit(input$clusters, "\\s+")
+    if (input$annotation %in% values$annotations) {
+      for (cluster in clusters_list) {
+        values$annotations[[input$annotation]] <- append(values$annotations[[input$annotation]], cluster)
+      }
+    }
+    else {
+      values$annotations[[input$annotation]] = list()
+      for (cluster in clusters_list) {
+        values$annotations[[input$annotation]] <- append(values$annotations[[input$annotation]], cluster)
+      }
+    }
+    # for (cluster in clusters_list) {
+    #   values$annotation_show[[cluster]] <- input$annotation
+    # }
+  })
+
   observeEvent(values$obj, {
     if (!is.null(values$obj)) {
-      updateSelectizeInput(session, "gene", choices = rownames(values$obj), selected = values$selected_gene)
+      updateSelectizeInput(
+        session, "gene",
+        choices = rownames(values$obj),
+        selected = values$selected_gene
+      )
+      updateSelectInput(session, "clusters", choices = names(values$cluster_cell_counts))
     }
   })
 }
