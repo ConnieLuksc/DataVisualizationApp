@@ -31,13 +31,13 @@ ui <- fluidPage(
             column(5, plotOutput("violinPlot")),
             column(7, plotOutput("umap")),
           ),
-                         fluidRow(
+          fluidRow(
                  column(3,plotOutput(outputId = 'featurePlot_1', height = '225px')),
                  column(3,plotOutput(outputId = 'featurePlot_2', height = '225px')),
                  column(3,plotOutput(outputId = 'featurePlot_3', height = '225px')),
                  column(3,plotOutput(outputId = 'featurePlot_4', height = '225px'))
                ),
-               fluidRow(
+          fluidRow(
                 column(3,plotOutput(outputId = 'violinPlotGene_1', height = '225px')),
                 column(3,plotOutput(outputId = 'violinPlotGene_2', height = '225px')),
                 column(3,plotOutput(outputId = 'violinPlotGene_3', height = '225px')),
@@ -85,6 +85,8 @@ server <- function(input, output, session) {
   ignore_button_clicked <- FALSE
   values$count <- 2
   values$selected_gene <- list(genes_1=NULL, genes_2=NULL, genes_3=NULL, genes_4=NULL)
+  values$featurePlots <- list(featurePlot_1=NULL, featurePlot_2=NULL, featurePlot_3=NULL, featurePlot_4=NULL)
+  values$violinPlotGenes <- list(violinPlotGene_1=NULL, violinPlotGene_2=NULL, violinPlotGene_3=NULL, violinPlotGene_4=NULL)
   values$annotations <- list()
   values$cluster_num <- 0
   values$annotation_show <- reactive({ rep("NA", times = values$cluster_num) })
@@ -341,8 +343,14 @@ server <- function(input, output, session) {
               # values$obj <- loaded_seurat # nolint
               output[[paste0("umap", values$count)]] <- renderPlot(current_saved_list[[key]]$umap) # nolint
               output[[paste0("violinPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$violin) # nolint
-              output[[paste0("featurePlot_1", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_1) # nolint
-              output[[paste0("violinPlotGene_1", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_1) # nolint
+              output[[paste0("featurePlot_1", values$count)]] <- current_saved_list[[key]]$featurePlot_1 # nolint
+              output[[paste0("violinPlotGene_1", values$count)]] <- current_saved_list[[key]]$violinPlotGene_1 # nolint
+              output[[paste0("featurePlot_2", values$count)]] <- current_saved_list[[key]]$featurePlot_2 # nolint
+              output[[paste0("violinPlotGene_2", values$count)]] <- current_saved_list[[key]]$violinPlotGene_2 # nolint
+              output[[paste0("featurePlot_3", values$count)]] <- current_saved_list[[key]]$featurePlot_3 # nolint
+              output[[paste0("violinPlotGene_3", values$count)]] <- current_saved_list[[key]]$violinPlotGene_3 # nolint
+              output[[paste0("featurePlot_4", values$count)]] <- current_saved_list[[key]]$featurePlot_4 # nolint
+              output[[paste0("violinPlotGene_4", values$count)]] <- current_saved_list[[key]]$violinPlotGene_4 # nolint
               output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
               output[[paste0("heatmapPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$heatmap)
               output[[paste0("mdsPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$plotmds)
@@ -391,15 +399,17 @@ server <- function(input, output, session) {
                         ),
                       ),
                       fluidRow(
-                        column(
-                          6,
-                          plotOutput(paste0("featurePlot_1", values$count))
-                        ),
-                        column(
-                          6,
-                          plotOutput(paste0("violinPlotGene_1", values$count))
-                        ),
-                      ),
+                          column(3,plotOutput(paste0("featurePlot_1", values$count), height = '225px')),
+                          column(3,plotOutput(paste0("featurePlot_2", values$count), height = '225px')),
+                          column(3,plotOutput(paste0("featurePlot_3", values$count), height = '225px')),
+                          column(3,plotOutput(paste0("featurePlot_4", values$count), height = '225px'))
+                          ),
+                      fluidRow(
+                          column(3,plotOutput(paste0("violinPlotGene_1", values$count), height = '225px')),
+                          column(3,plotOutput(paste0("violinPlotGene_2", values$count), height = '225px')),
+                          column(3,plotOutput(paste0("violinPlotGene_3", values$count), height = '225px')),
+                          column(3,plotOutput(paste0("violinPlotGene_4", values$count), height = '225px'))
+                          ),
                       fluidRow(
                         column(
                           4,
@@ -452,10 +462,11 @@ server <- function(input, output, session) {
       file = input$file$datapath, pc = input$pc,
       resolution = input$resolution, gene = input$gene,
       cluster = values$cluster_cell_counts, umap = values$umap,
-      violin = values$violinPlot, feature = values$feature,
-      heatmap = values$heatmap,
-      featurePlot_1 = values$featurePlot_1,
-      violinPlotGene_1 = values$violinPlotGene_1,
+      violin = values$violinPlot, heatmap = values$heatmap,
+      featurePlot_1 = values$featurePlots[["featurePlot_1"]], violinPlotGene_1 = values$violinPlotGenes[["violinPlotGene_1"]],
+      featurePlot_2 = values$featurePlots[["featurePlot_2"]], violinPlotGene_2 = values$violinPlotGenes[["violinPlotGene_2"]],
+      featurePlot_3 = values$featurePlots[["featurePlot_3"]], violinPlotGene_3 = values$violinPlotGenes[["violinPlotGene_3"]],
+      featurePlot_4 = values$featurePlots[["featurePlot_4"]], violinPlotGene_4 = values$violinPlotGenes[["violinPlotGene_4"]],
       geneViolin = values$violin, annotation_umap = values$umap_annotation,
       sankey = values$sankey, plotmds = values$mds
     )
@@ -465,48 +476,31 @@ server <- function(input, output, session) {
 
   #feature plot and violin plot for gene
   observeEvent(input$genes_1, {
-    values$featurePlot_1 <- renderPlot(create_feature_plot(values$obj, input$genes_1, values))
-    output$featurePlot_1 <- values$featurePlot_1
-    values$violinPlotGene_1 <- renderPlot(create_violin_plot(values$obj, input$genes_1, values, ncol = NULL, pt.size = 0))
-    output$violinPlotGene_1 <- values$violinPlotGene_1
+    values$featurePlots[["featurePlot_1"]] <- renderPlot(create_feature_plot(values$obj, input$genes_1, values))
+    output$featurePlot_1 <- values$featurePlots[["featurePlot_1"]]
+    values$violinPlotGenes[["violinPlotGene_1"]] <- renderPlot(create_violin_plot(values$obj, input$genes_1, values, ncol = NULL, pt.size = 0))
+    output$violinPlotGene_1 <- values$violinPlotGenes[["violinPlotGene_1"]]
     values$selected_genes[["genes_1"]] = input$genes_1
   })
   observeEvent(input$genes_2, {
-    output$featurePlot_2 <- renderPlot(create_feature_plot(values$obj, input$genes_2, values))
-    output$violinPlotGene_2 <- renderPlot(create_violin_plot(values$obj, input$genes_2, values, ncol = NULL, pt.size = 0))
+    values$featurePlots[["featurePlot_2"]] <- renderPlot(create_feature_plot(values$obj, input$genes_2, values))
+    output$featurePlot_2 <- values$featurePlots[["featurePlot_2"]]
+    values$violinPlotGenes[["violinPlotGene_2"]] <- renderPlot(create_violin_plot(values$obj, input$genes_2, values, ncol = NULL, pt.size = 0))
+    output$violinPlotGene_2 <- values$violinPlotGenes[["violinPlotGene_2"]]
     values$selected_genes[["genes_2"]] = input$genes_2 
   })
   observeEvent(input$genes_3, {
-    output$featurePlot_3 <- renderPlot(create_feature_plot(values$obj, input$genes_3, values))
-    output$violinPlotGene_3 <- renderPlot(create_violin_plot(values$obj, input$genes_3, values, ncol = NULL, pt.size = 0))
+    values$featurePlots[["featurePlot_3"]] <- renderPlot(create_feature_plot(values$obj, input$genes_3, values))
+    output$featurePlot_3 <- values$featurePlots[["featurePlot_3"]]
+    values$violinPlotGenes[["violinPlotGene_3"]] <- renderPlot(create_violin_plot(values$obj, input$genes_3, values, ncol = NULL, pt.size = 0))
+    output$violinPlotGene_3 <- values$violinPlotGenes[["violinPlotGene_3"]]
     values$selected_genes[["genes_3"]] = input$genes_3 
   })
   observeEvent(input$genes_4, {
-    output$featurePlot_4 <- renderPlot(create_feature_plot(values$obj, input$genes_4, values))
-    output$violinPlotGene_4 <- renderPlot(create_violin_plot(values$obj, input$genes_4, values, ncol = NULL, pt.size = 0))
-    values$selected_genes[["genes_4"]] = input$genes_4 
-  })
-
-
-  #feature plot and violin plot for gene
-  observeEvent(input$genes_1, {
-    output$featurePlot_1 <- renderPlot(create_feature_plot(values$obj, input$genes_1, values))
-    output$violinPlotGene_1 <- renderPlot(create_violin_plot(values$obj, input$genes_1, values, ncol = NULL, pt.size = 0))
-    values$selected_genes[["genes_1"]] = input$genes_1
-  })
-  observeEvent(input$genes_2, {
-    output$featurePlot_2 <- renderPlot(create_feature_plot(values$obj, input$genes_2, values))
-    output$violinPlotGene_2 <- renderPlot(create_violin_plot(values$obj, input$genes_2, values, ncol = NULL, pt.size = 0))
-    values$selected_genes[["genes_2"]] = input$genes_2 
-  })
-  observeEvent(input$genes_3, {
-    output$featurePlot_3 <- renderPlot(create_feature_plot(values$obj, input$genes_3, values))
-    output$violinPlotGene_3 <- renderPlot(create_violin_plot(values$obj, input$genes_3, values, ncol = NULL, pt.size = 0))
-    values$selected_genes[["genes_3"]] = input$genes_3 
-  })
-  observeEvent(input$genes_4, {
-    output$featurePlot_4 <- renderPlot(create_feature_plot(values$obj, input$genes_4, values))
-    output$violinPlotGene_4 <- renderPlot(create_violin_plot(values$obj, input$genes_4, values, ncol = NULL, pt.size = 0))
+    values$featurePlots[["featurePlot_4"]] <- renderPlot(create_feature_plot(values$obj, input$genes_4, values))
+    output$featurePlot_4 <- values$featurePlots[["featurePlot_4"]]
+    values$violinPlotGenes[["violinPlotGene_4"]] <- renderPlot(create_violin_plot(values$obj, input$genes_4, values, ncol = NULL, pt.size = 0))
+    output$violinPlotGene_4 <- values$violinPlotGenes[["violinPlotGene_4"]]
     values$selected_genes[["genes_4"]] = input$genes_4 
   })
 

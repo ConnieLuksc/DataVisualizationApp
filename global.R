@@ -105,7 +105,7 @@ create_feature_plot <- function(obj, genes, values) {
     #     geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
     #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
     # }
-    values$feature <- FP
+    # values$feature <- FP
     return(FP)
 }
 
@@ -129,7 +129,7 @@ create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
     #     geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
     #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
     # }
-    values$violin <- VP
+    # values$violin <- VP
     return(combined_plot)
 }
 
