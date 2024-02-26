@@ -341,8 +341,8 @@ server <- function(input, output, session) {
               # values$obj <- loaded_seurat # nolint
               output[[paste0("umap", values$count)]] <- renderPlot(current_saved_list[[key]]$umap) # nolint
               output[[paste0("violinPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$violin) # nolint
-              output[[paste0("featurePlot", values$count)]] <- renderPlot(current_saved_list[[key]]$feature) # nolint
-              output[[paste0("geneViolin", values$count)]] <- renderPlot(current_saved_list[[key]]$geneViolin) # nolint
+              output[[paste0("featurePlot_1", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_1) # nolint
+              output[[paste0("violinPlotGene_1", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_1) # nolint
               output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
               output[[paste0("heatmapPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$heatmap)
               output[[paste0("mdsPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$plotmds)
@@ -393,11 +393,11 @@ server <- function(input, output, session) {
                       fluidRow(
                         column(
                           6,
-                          plotOutput(paste0("featurePlot", values$count))
+                          plotOutput(paste0("featurePlot_1", values$count))
                         ),
                         column(
                           6,
-                          plotOutput(paste0("geneViolin", values$count))
+                          plotOutput(paste0("violinPlotGene_1", values$count))
                         ),
                       ),
                       fluidRow(
@@ -454,6 +454,8 @@ server <- function(input, output, session) {
       cluster = values$cluster_cell_counts, umap = values$umap,
       violin = values$violinPlot, feature = values$feature,
       heatmap = values$heatmap,
+      featurePlot_1 = values$featurePlot_1,
+      violinPlotGene_1 = values$violinPlotGene_1,
       geneViolin = values$violin, annotation_umap = values$umap_annotation,
       sankey = values$sankey, plotmds = values$mds
     )
@@ -463,8 +465,10 @@ server <- function(input, output, session) {
 
   #feature plot and violin plot for gene
   observeEvent(input$genes_1, {
-    output$featurePlot_1 <- renderPlot(create_feature_plot(values$obj, input$genes_1, values))
-    output$violinPlotGene_1 <- renderPlot(create_violin_plot(values$obj, input$genes_1, values, ncol = NULL, pt.size = 0))
+    values$featurePlot_1 <- renderPlot(create_feature_plot(values$obj, input$genes_1, values))
+    output$featurePlot_1 <- values$featurePlot_1
+    values$violinPlotGene_1 <- renderPlot(create_violin_plot(values$obj, input$genes_1, values, ncol = NULL, pt.size = 0))
+    output$violinPlotGene_1 <- values$violinPlotGene_1
     values$selected_genes[["genes_1"]] = input$genes_1
   })
   observeEvent(input$genes_2, {
