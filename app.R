@@ -183,6 +183,7 @@ server <- function(input, output, session) {
         cluster_assignments <- Idents(values$obj)
         # Find all unique cluster IDs
         all_clusters <- unique(cluster_assignments)
+        colnames(data_matrix) <- gsub("^g", "", colnames(data_matrix))
         print(paste("Unique cluster IDs:", paste(all_clusters, collapse = ", ")))
         print(paste("Column names in data_matrix:", paste(colnames(data_matrix), collapse = ", ")))
         # Check that data_matrix is not empty after potential subsetting (if needed)
