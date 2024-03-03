@@ -17,11 +17,12 @@ library(patchwork)
 library(DT)
 library(purrr)
 library(pheatmap)
+library(htmlwidgets)
 
 library(networkD3)
 library(edgeR)
 
-
+# set.seed(123)
 # Read in file and perform validation.
 load_seurat_obj <- function(path) {
   errors <- c()
@@ -92,8 +93,8 @@ create_feature_plot <- function(obj, genes, values) {
     FP <- NULL
     if(!is.null(genes)){
         genes_list <- strsplit(genes, "\\s+")
-        obj <- AddModuleScore(obj, features = genes_list, name = "module")
-        FP <- FeaturePlot(obj, features = "module1", label = TRUE, repel = TRUE)   
+        obj <- AddModuleScore(obj, features = genes_list, name = "feature_plot")
+        FP <- FeaturePlot(obj, features = "feature_plot1", label = TRUE, repel = TRUE)   
     }
 
 
@@ -110,16 +111,13 @@ create_feature_plot <- function(obj, genes, values) {
 }
 
 create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
-    combined_plot <- NULL
-    VP <- list()
+    VP <- NULL
 
     if(!is.null(genes)){
         genes_list <- strsplit(genes, "\\s+")
-        for (gene in genes_list) {
-            VP[[gene]] <- VlnPlot(obj, features = gene, combine = TRUE)
-        }
-        combined_plot <- cowplot::plot_grid(plotlist = VP, ncol = length(genes_list))
-    }    
+        obj <- AddModuleScore(obj, features = genes_list, name = "violin_plot")
+        VP <- VlnPlot(obj, features = "violin_plot1", pt.size = 0, combine = TRUE)   
+    }
 
     # if (gene %in% rownames(obj)) {
     #     VP <- VlnPlot(obj, features = gene, pt.size = 0, combine = FALSE)
@@ -130,7 +128,7 @@ create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
     #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
     # }
     # values$violin <- VP
-    return(combined_plot)
+    return(VP)
 }
 
 create_mds_plot <- function(obj, values) {
@@ -143,8 +141,9 @@ create_mds_plot <- function(obj, values) {
   dge_data$genes <- gene_names
 
   # create MDS plot
-  set.seed(123)
+  # set.seed(123)
   colors <- rainbow(length(colnames(all_genes$RNA)))
+  values$color <- colors
   # mdsPlot <- plotMDS(dge_data, col = colors)
   mdsPlot <- plotMDS(dge_data, col = colors, pch=20, cex=2)
   legend("topright", legend = colnames(all_genes$RNA), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
@@ -218,8 +217,26 @@ create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_
   }
   transition_data$To <- as.integer(transition_data$To) + as.integer(length(rownames(transition_counts))) - 1
 
+  unique_from <- unique(transition_data$From)
+  # colors <- rainbow(length(unique_from))
+  colors <- values$color
+  names(colors) <- unique_from
+  print(colors)
+
+  transition_data$Color <- colors[as.character(transition_data$From)]
+
   # Nodes parameter
   all_nodes <- data.frame(name = c(as.character(rownames(transition_counts)), as.character(colnames(transition_counts))))
+
+  # Change the color of nodes
+  all_nodes$group <- as.character(all_nodes$name)
+  for (node in unique_from) {
+    if (node %in% all_nodes$name) {
+      all_nodes$color[all_nodes$name == node] <- colors[node+1]
+    }
+  }
+  colors_js_array <- paste0("['", paste(values$color, collapse = "','"), "']")
+  colourScale_js <- sprintf("d3.scaleOrdinal().domain(d3.range(1,%s + 1)).range(%s)", length(values$color), colors_js_array)
 
   # create sankey
   sankey <- sankeyNetwork(
@@ -229,9 +246,23 @@ create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_
     Target = "To",
     Value = "Value",
     units = "Cell Counts",
+    NodeID = "name",
+    NodeGroup = "color",
+    colourScale = JS(colourScale_js),
     width = 600,
     height = 400
   )
+
+  sankey <- onRender(
+  sankey,
+  '
+  function(el, x) {
+    d3.select(el).selectAll(".link")
+      .style("stroke", function(d) { return d.source.color; });
+  }
+  '
+)
+
   values$sankey <- sankey
   return(sankey)
 
