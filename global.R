@@ -92,8 +92,8 @@ create_feature_plot <- function(obj, genes, values) {
     FP <- NULL
     if(!is.null(genes)){
         genes_list <- strsplit(genes, "\\s+")
-        obj <- AddModuleScore(obj, features = genes_list, name = "module")
-        FP <- FeaturePlot(obj, features = "module1", label = TRUE, repel = TRUE)   
+        obj <- AddModuleScore(obj, features = genes_list, name = "feature_plot")
+        FP <- FeaturePlot(obj, features = "feature_plot1", label = TRUE, repel = TRUE)   
     }
 
 
@@ -110,16 +110,13 @@ create_feature_plot <- function(obj, genes, values) {
 }
 
 create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
-    combined_plot <- NULL
-    VP <- list()
+    VP <- NULL
 
     if(!is.null(genes)){
         genes_list <- strsplit(genes, "\\s+")
-        for (gene in genes_list) {
-            VP[[gene]] <- VlnPlot(obj, features = gene, combine = TRUE)
-        }
-        combined_plot <- cowplot::plot_grid(plotlist = VP, ncol = length(genes_list))
-    }    
+        obj <- AddModuleScore(obj, features = genes_list, name = "violin_plot")
+        VP <- VlnPlot(obj, features = "violin_plot1", pt.size = 0, combine = TRUE)   
+    }
 
     # if (gene %in% rownames(obj)) {
     #     VP <- VlnPlot(obj, features = gene, pt.size = 0, combine = FALSE)
@@ -130,7 +127,7 @@ create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
     #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
     # }
     # values$violin <- VP
-    return(combined_plot)
+    return(VP)
 }
 
 create_mds_plot <- function(obj, values) {
