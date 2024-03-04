@@ -153,31 +153,14 @@ server <- function(input, output, session) {
       # })
 
       output$violinPlot <- renderPlot({
-<<<<<<< HEAD
-        if (!is.na(input$pc) &&
-          !is.na(input$resolution) &&
-          !is.null(values$obj)) {
-          values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
-          violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
-          values$violinPlot <- violinPlot
-          violinPlot
-        }
-=======
           if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
               values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
-              create_violin_plot(values$obj, values = values, ncol = 3, pt.size = 0)
+              violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
+              values$violinPlot <- violinPlot
+              violinPlot
           }
->>>>>>> 2a24397393fc56dc75ab34231bbd069f26fffb1b
       })
 
-
-      output$violinPlotGene <- renderPlot({
-        if (!is.null(input$gene)) {
-          create_violin_plot(values$obj, input$gene, values,
-                             ncol = NULL, pt.size = 0
-          )
-        }
-      })
 
 
       output$heatmapPlot <- renderPlot({
@@ -236,14 +219,6 @@ server <- function(input, output, session) {
         # Plot the heatmap
 
         values$heatmap <- pheatmap(correlation_matrix,
-<<<<<<< HEAD
-                                   clustering_distance_rows = "euclidean",
-                                   clustering_distance_cols = "euclidean",
-                                   clustering_method = "complete",
-                                   color = colorRampPalette(c("yellow", "orange", "red"))(50),
-                                   annotation_col = cluster_annotation,
-                                   annotation_colors = annotation_colors)
-=======
                           clustering_distance_rows = "euclidean",
                           clustering_distance_cols = "euclidean",
                           clustering_method = "complete",
@@ -251,7 +226,6 @@ server <- function(input, output, session) {
                           annotation_col = cluster_annotation,
                           annotation_colors = annotation_colors)
 
->>>>>>> 2a24397393fc56dc75ab34231bbd069f26fffb1b
         values$heatmap
       }, height = function() { 350 }, width = function() { 500 })
 

@@ -20,6 +20,7 @@ library(pheatmap)
 library(htmlwidgets)
 library(networkD3)
 library(edgeR)
+library(stringr)
 
 # set.seed(123)
 # Read in file and perform validation.
@@ -93,9 +94,11 @@ create_feature_plot <- function(obj, genes, values) {
     FP <- NULL
     if(!is.null(genes)){
         genes_list <- strsplit(genes, "\\s+")
-        obj <- AddModuleScore(obj, features = genes_list, name = "feature_plot")
-        # colors <- rainbow(length(levels(Idents(obj))))
-        FP <- FeaturePlot(obj, features = "feature_plot1", label = TRUE, repel = TRUE)   
+        combined_genes <- paste(genes, collapse = " ")
+        wrapped_title <- str_wrap(combined_genes, width = 10)
+        obj <- AddModuleScore(obj, features = genes_list, name = combined_genes)
+        FP <- FeaturePlot(obj, features = paste0(combined_genes, "1"), label = TRUE, repel = TRUE)+labs(title = wrapped_title) +
+      theme(plot.title = element_text(size = 12)) 
     }
 
 
@@ -111,19 +114,27 @@ create_feature_plot <- function(obj, genes, values) {
     return(FP)
 }
 
-create_violin_plot <- function(obj, genes = NULL, values, ncol = NULL, pt.size) {
+create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
     VP <- NULL
-    colors <- rainbow(length(levels(Idents(obj))))
 
-    if(!is.null(genes) && length(genes) > 0){
+    if(!is.null(genes)){
         genes_list <- strsplit(genes, "\\s+")
-        obj <- AddModuleScore(obj, features = genes_list, name = "violin_plot")
-        VP <- VlnPlot(obj, features = "violin_plot1", pt.size = pt.size, combine = TRUE, cols = colors)
-    } else {
-        # Case when genes input is not provided
-        VP <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = ncol, pt.size = pt.size, cols = colors)
+        combined_genes <- paste(genes, collapse = " ")
+        wrapped_title <- str_wrap(combined_genes, width = 10)
+        obj <- AddModuleScore(obj, features = genes_list, name = combined_genes)
+        VP <- VlnPlot(obj, features = paste0(combined_genes, "1"), pt.size = 0, combine = TRUE)+labs(title = wrapped_title) +
+      theme(plot.title = element_text(size = 12))   
     }
 
+    # if (gene %in% rownames(obj)) {
+    #     VP <- VlnPlot(obj, features = gene, pt.size = 0, combine = FALSE)
+    # }else{
+    #     VP <- ggplot() +
+    #     theme_void() +
+    #     geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
+    #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+    # }
+    # values$violin <- VP
     return(VP)
 }
 
@@ -142,7 +153,7 @@ create_mds_plot <- function(obj, values) {
   values$color <- colors
   # mdsPlot <- plotMDS(dge_data, col = colors)
   mdsPlot <- plotMDS(dge_data, col = colors, pch=20, cex=2)
-  legend("topright", legend = gsub("^g", "", colnames(all_genes$RNA)), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
+  legend("topright", legend = colnames(all_genes$RNA), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
   title("MDS Plot")
   values$mds <- mdsPlot
   return (mdsPlot)
@@ -152,13 +163,16 @@ create_mds_plot <- function(obj, values) {
 create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation) {
   tryCatch(
   {
-    obj1 <- RunUMAP(obj, dims = 1:pc)
-    umap <- DimPlot(obj1,
+    obj <- FindNeighbors(obj, dims = 1:pc)
+    obj <- FindClusters(obj, resolution = resolution)
+    obj <- RunUMAP(obj, dims = 1:pc)
+    umap <- DimPlot(obj,
                     pt.size = .1, label = FALSE,
-                    label.size = 4, group.by = annotation,
+                    label.size = 4, group.by = "Annotation",
                     reduction = "umap"
     )
     remove_modal_spinner()
+    values$obj <- obj
     values$umap_annotation <- umap
     return(umap)
   },
@@ -174,6 +188,7 @@ create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation)
           color = "gray73", fontface = "bold"
         ) +
         theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+      values$obj <- NULL
       # remove_modal_spinner()
       return(umap)
     }
@@ -182,9 +197,10 @@ create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation)
 
 # sankey plot
 create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_num) {
+  # obj <- FindNeighbors(obj, dims = 1:pc)
+  # obj <- FindClusters(obj, resolution = resolution)
   cluster_info <- as.data.frame(obj$seurat_clusters)
-  annotation_info <- as.data.frame(obj[[annotation]])
-  # annotation_info <- annotation
+  annotation_info <- as.data.frame(obj$Annotation)
   transitions <- data.frame(From = character(), To = character())
 
   # record transition
@@ -212,6 +228,7 @@ create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_
   # colors <- rainbow(length(unique_from))
   colors <- values$color
   names(colors) <- unique_from
+  print(colors)
 
   transition_data$Color <- colors[as.character(transition_data$From)]
 
