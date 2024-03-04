@@ -151,11 +151,10 @@ server <- function(input, output, session) {
       output$violinPlot <- renderPlot({
           if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
               values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
-              violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
-              values$violinPlot <- violinPlot
-              violinPlot
+              create_violin_plot(values$obj, values = values, ncol = 3, pt.size = 0)
           }
       })
+
 
       output$violinPlotGene <- renderPlot({
         if (!is.null(input$gene)) {
