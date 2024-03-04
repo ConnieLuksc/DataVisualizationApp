@@ -198,14 +198,17 @@ server <- function(input, output, session) {
           stop("No variable genes found with non-zero variance.")
         }
 
-        cluster_colors <- grDevices::rainbow(length(all_clusters))
-        print("cluster_colors")
-        print(cluster_colors)
-        names(cluster_colors) <- all_clusters
+        # cluster_colors <- grDevices::rainbow(length(all_clusters))
+        set.seed(123)
+        colors <- rainbow(length(all_clusters))
+        print("colors")
+        print(colors)
+        names(colors) <- all_clusters
         cluster_annotation <- data.frame(Cluster = colnames(data_matrix))
         rownames(cluster_annotation) <- colnames(data_matrix)
         print("cluster_annotation")
         print(head(cluster_annotation))
+        annotation_colors = list(Cluster = colors)
 
 
         # Calculate the correlation matrix on the subsetted data, handling any remaining NAs
@@ -220,7 +223,8 @@ server <- function(input, output, session) {
                           clustering_distance_cols = "euclidean",
                           clustering_method = "complete",
                           color = colorRampPalette(c("yellow", "orange", "red"))(50),
-                          annotation_col = cluster_annotation)
+                          annotation_col = cluster_annotation,
+                          annotation_colors = annotation_colors)
         values$heatmap
       })
 
