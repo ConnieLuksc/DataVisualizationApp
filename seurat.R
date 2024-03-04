@@ -1,10 +1,6 @@
 # Following this tut: https://satijalab.org/seurat/articles/pbmc3k_tutorial.html
 
 
-library(dplyr)
-library(Seurat)
-library(patchwork)
-
 # Load the PBMC dataset
 pbmc.data <- Read10X(data.dir = r"(C:\Users\Oscar Wright\Documents\youtube\RShiny_dashboard\pbmc3k_filtered_gene_bc_matrices\filtered_gene_bc_matrices\hg19)")
 

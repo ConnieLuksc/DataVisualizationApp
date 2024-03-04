@@ -45,20 +45,23 @@ ui <- fluidPage(
                ),
           fluidRow(
             column(
-              4,
+              6,
               plotOutput("heatmapPlot")
             ),
             column(
-              4,
+              6,
               plotOutput(outputId = "mdsPlot")
-            ),
+            )
+
+          ),
+          fluidRow(
             column(
-              4,
-              uiOutput(outputId = "sankeyPlot")
-            ),
-            column(
-              4,
+              6,
               plotOutput(outputId = "umap_annotation")
+            ),
+            column(
+              6,
+              uiOutput(outputId = "sankeyPlot")
             )
           )
         ),
@@ -227,8 +230,10 @@ server <- function(input, output, session) {
                           color = colorRampPalette(c("yellow", "orange", "red"))(50),
                           annotation_col = cluster_annotation,
                           annotation_colors = annotation_colors)
+
         values$heatmap
-      })
+      }, height = function() { 350 }, width = function() { 500 })
+
 
 
       output$cluster_cell_counts <- DT::renderDataTable({
@@ -435,20 +440,23 @@ server <- function(input, output, session) {
                           ),
                       fluidRow(
                         column(
-                          4,
+                          6,
                           plotOutput(paste0("heatmapPlot", values$count))
                         ),
                         column(
-                          4,
+                          6,
                           plotOutput(paste0("mdsPlot", values$count))
-                        ),
+                        )
+
+                      ),
+                      fluidRow(
                         column(
-                          4,
-                          uiOutput(paste0("sankeyPlot", values$count))
-                        ),
-                        column(
-                          4,
+                          6,
                           plotOutput(paste0("umap_annotation", values$count))
+                        ),
+                        column(
+                          6,
+                          uiOutput(paste0("sankeyPlot", values$count))
                         )
                       )
                     ),
