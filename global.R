@@ -143,7 +143,8 @@ create_mds_plot <- function(obj, values) {
   values$color <- colors
   # mdsPlot <- plotMDS(dge_data, col = colors)
   mdsPlot <- plotMDS(dge_data, col = colors, pch=20, cex=2)
-  legend("topright", legend = colnames(all_genes$RNA), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
+  # legend("topright", legend = colnames(all_genes$RNA), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
+  legend("topright", legend = gsub("^g", "", colnames(all_genes$RNA)), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
   title("MDS Plot")
   values$mds <- mdsPlot
   return (mdsPlot)
