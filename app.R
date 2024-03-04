@@ -10,20 +10,21 @@ ui <- fluidPage(
       "Tab 1",
       fluidRow(
         column(2,
-              fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
-              actionButton("reset", "Reset", class = "reset-btn"),
-              actionButton("run", "Run", class = "run-btn"),
-              numericInput("pc", "PC", value = NA),
-              numericInput("resolution", "Resolution", value = NA, step = 0.1),
-              selectizeInput('genes_1', 'Genes', choices = NULL, multiple=TRUE),
-              selectizeInput('genes_2', NULL, choices = NULL, multiple=TRUE),
-              selectizeInput('genes_3', NULL, choices = NULL, multiple=TRUE),
-              selectizeInput('genes_4', NULL, choices = NULL, multiple=TRUE),
-              selectInput('clusters', 'Clusters', choices = NULL, multiple=TRUE, selectize=TRUE),
-              textInput("annotation", "Annotation"),
-              selectizeInput("gene", "Genes", choices = NULL),
-              actionButton("annotate", "Annotate"),
-              actionButton("save", "Save", class = "save-btn")
+               fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
+               actionButton("reset", "Reset", class = "reset-btn"),
+               actionButton("run", "Run", class = "run-btn"),
+               numericInput("pc", "PC", value = NA),
+               numericInput("resolution", "Resolution", value = NA, step = 0.1),
+               selectizeInput('genes_1', 'Genes', choices = NULL, multiple = TRUE),
+               selectizeInput('genes_2', NULL, choices = NULL, multiple = TRUE),
+               selectizeInput('genes_3', NULL, choices = NULL, multiple = TRUE),
+               selectizeInput('genes_4', NULL, choices = NULL, multiple = TRUE),
+               selectizeInput('annotation_column', label = 'annotation_column',  choices = NULL),
+               selectInput('clusters', 'Clusters', choices = NULL, multiple = TRUE, selectize = TRUE),
+               textInput("annotation", "Annotation"),
+               selectizeInput("gene", "Genes", choices = NULL),
+               actionButton("annotate", "Annotate"),
+               actionButton("save", "Save", class = "save-btn")
         ),
         column(
           8,
@@ -32,17 +33,17 @@ ui <- fluidPage(
             column(7, plotOutput("umap")),
           ),
           fluidRow(
-                 column(3,plotOutput(outputId = 'featurePlot_1', height = '225px')),
-                 column(3,plotOutput(outputId = 'featurePlot_2', height = '225px')),
-                 column(3,plotOutput(outputId = 'featurePlot_3', height = '225px')),
-                 column(3,plotOutput(outputId = 'featurePlot_4', height = '225px'))
-               ),
+            column(3, plotOutput(outputId = 'featurePlot_1', height = '225px')),
+            column(3, plotOutput(outputId = 'featurePlot_2', height = '225px')),
+            column(3, plotOutput(outputId = 'featurePlot_3', height = '225px')),
+            column(3, plotOutput(outputId = 'featurePlot_4', height = '225px'))
+          ),
           fluidRow(
-                column(3,plotOutput(outputId = 'violinPlotGene_1', height = '225px')),
-                column(3,plotOutput(outputId = 'violinPlotGene_2', height = '225px')),
-                column(3,plotOutput(outputId = 'violinPlotGene_3', height = '225px')),
-                column(3,plotOutput(outputId = 'violinPlotGene_4', height = '225px'))
-               ),
+            column(3, plotOutput(outputId = 'violinPlotGene_1', height = '225px')),
+            column(3, plotOutput(outputId = 'violinPlotGene_2', height = '225px')),
+            column(3, plotOutput(outputId = 'violinPlotGene_3', height = '225px')),
+            column(3, plotOutput(outputId = 'violinPlotGene_4', height = '225px'))
+          ),
           fluidRow(
             column(
               4,
@@ -84,9 +85,9 @@ server <- function(input, output, session) {
   values$saved_list <- list()
   ignore_button_clicked <- FALSE
   values$count <- 2
-  values$selected_gene <- list(genes_1=NULL, genes_2=NULL, genes_3=NULL, genes_4=NULL)
-  values$featurePlots <- list(featurePlot_1=NULL, featurePlot_2=NULL, featurePlot_3=NULL, featurePlot_4=NULL)
-  values$violinPlotGenes <- list(violinPlotGene_1=NULL, violinPlotGene_2=NULL, violinPlotGene_3=NULL, violinPlotGene_4=NULL)
+  values$selected_gene <- list(genes_1 = NULL, genes_2 = NULL, genes_3 = NULL, genes_4 = NULL)
+  values$featurePlots <- list(featurePlot_1 = NULL, featurePlot_2 = NULL, featurePlot_3 = NULL, featurePlot_4 = NULL)
+  values$violinPlotGenes <- list(violinPlotGene_1 = NULL, violinPlotGene_2 = NULL, violinPlotGene_3 = NULL, violinPlotGene_4 = NULL)
   values$annotations <- list()
   values$cluster_num <- 0
   values$annotation_show <- reactive({ rep("NA", times = values$cluster_num) })
@@ -149,12 +150,14 @@ server <- function(input, output, session) {
       # })
 
       output$violinPlot <- renderPlot({
-          if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
-              values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
-              violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
-              values$violinPlot <- violinPlot
-              violinPlot
-          }
+        if (!is.na(input$pc) &&
+          !is.na(input$resolution) &&
+          !is.null(values$obj)) {
+          values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
+          violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
+          values$violinPlot <- violinPlot
+          violinPlot
+        }
       })
 
       output$violinPlotGene <- renderPlot({
@@ -195,7 +198,7 @@ server <- function(input, output, session) {
         }
         # Calculate the standard deviation for each gene and filter out the genes with zero standard deviation
         non_zero_variance_genes <- apply(data_matrix, 1, var, na.rm = TRUE) > 0
-        data_matrix <- data_matrix[non_zero_variance_genes, ]
+        data_matrix <- data_matrix[non_zero_variance_genes,]
         # Check that data_matrix is not empty after filtering for non-zero variance genes
         if (nrow(data_matrix) == 0) {
           stop("No variable genes found with non-zero variance.")
@@ -215,19 +218,19 @@ server <- function(input, output, session) {
 
 
         # Calculate the correlation matrix on the subsetted data, handling any remaining NAs
-        correlation_matrix <- cor(data_matrix, use="pairwise.complete.obs")
+        correlation_matrix <- cor(data_matrix, use = "pairwise.complete.obs")
 
         print("Inspecting first few rows of correlation_matrix:")
         print(head(correlation_matrix))
         # Plot the heatmap
 
         values$heatmap <- pheatmap(correlation_matrix,
-                          clustering_distance_rows = "euclidean",
-                          clustering_distance_cols = "euclidean",
-                          clustering_method = "complete",
-                          color = colorRampPalette(c("yellow", "orange", "red"))(50),
-                          annotation_col = cluster_annotation,
-                          annotation_colors = annotation_colors)
+                                   clustering_distance_rows = "euclidean",
+                                   clustering_distance_cols = "euclidean",
+                                   clustering_method = "complete",
+                                   color = colorRampPalette(c("yellow", "orange", "red"))(50),
+                                   annotation_col = cluster_annotation,
+                                   annotation_colors = annotation_colors)
         values$heatmap
       })
 
@@ -253,7 +256,7 @@ server <- function(input, output, session) {
       })
 
       output$umap_annotation <- renderPlot({
-          create_annotation_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values, values$annotations)
+        create_annotation_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values, values$annotations)
       })
 
       output$unavailable_sankey <- renderPlot({
@@ -270,7 +273,7 @@ server <- function(input, output, session) {
       })
 
       output$sankeyPlot <- renderUI({
-          create_sankey_plot(values$obj, values, input$pc, input$resolution, values$annotations, values$cluster_cell_counts)
+        create_sankey_plot(values$obj, values, input$pc, input$resolution, values$annotations, values$cluster_cell_counts)
       })
 
 
@@ -423,17 +426,17 @@ server <- function(input, output, session) {
                         ),
                       ),
                       fluidRow(
-                          column(3,plotOutput(paste0("featurePlot_1", values$count), height = '225px')),
-                          column(3,plotOutput(paste0("featurePlot_2", values$count), height = '225px')),
-                          column(3,plotOutput(paste0("featurePlot_3", values$count), height = '225px')),
-                          column(3,plotOutput(paste0("featurePlot_4", values$count), height = '225px'))
-                          ),
+                        column(3, plotOutput(paste0("featurePlot_1", values$count), height = '225px')),
+                        column(3, plotOutput(paste0("featurePlot_2", values$count), height = '225px')),
+                        column(3, plotOutput(paste0("featurePlot_3", values$count), height = '225px')),
+                        column(3, plotOutput(paste0("featurePlot_4", values$count), height = '225px'))
+                      ),
                       fluidRow(
-                          column(3,plotOutput(paste0("violinPlotGene_1", values$count), height = '225px')),
-                          column(3,plotOutput(paste0("violinPlotGene_2", values$count), height = '225px')),
-                          column(3,plotOutput(paste0("violinPlotGene_3", values$count), height = '225px')),
-                          column(3,plotOutput(paste0("violinPlotGene_4", values$count), height = '225px'))
-                          ),
+                        column(3, plotOutput(paste0("violinPlotGene_1", values$count), height = '225px')),
+                        column(3, plotOutput(paste0("violinPlotGene_2", values$count), height = '225px')),
+                        column(3, plotOutput(paste0("violinPlotGene_3", values$count), height = '225px')),
+                        column(3, plotOutput(paste0("violinPlotGene_4", values$count), height = '225px'))
+                      ),
                       fluidRow(
                         column(
                           4,
@@ -497,6 +500,12 @@ server <- function(input, output, session) {
     values$saved_list[[new_index]] <- saved_list_tmp
   })
 
+  # choose annotation colum from meta data
+  observeEvent(input$annotation_column, {
+    # print(input$annotation_column)
+    values$annotations <- input$annotation_column
+  })
+
 
   #feature plot and violin plot for gene
   observeEvent(input$genes_1, {
@@ -511,41 +520,41 @@ server <- function(input, output, session) {
     output$featurePlot_2 <- values$featurePlots[["featurePlot_2"]]
     values$violinPlotGenes[["violinPlotGene_2"]] <- renderPlot(create_violin_plot(values$obj, input$genes_2, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_2 <- values$violinPlotGenes[["violinPlotGene_2"]]
-    values$selected_genes[["genes_2"]] = input$genes_2 
+    values$selected_genes[["genes_2"]] = input$genes_2
   })
   observeEvent(input$genes_3, {
     values$featurePlots[["featurePlot_3"]] <- renderPlot(create_feature_plot(values$obj, input$genes_3, values))
     output$featurePlot_3 <- values$featurePlots[["featurePlot_3"]]
     values$violinPlotGenes[["violinPlotGene_3"]] <- renderPlot(create_violin_plot(values$obj, input$genes_3, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_3 <- values$violinPlotGenes[["violinPlotGene_3"]]
-    values$selected_genes[["genes_3"]] = input$genes_3 
+    values$selected_genes[["genes_3"]] = input$genes_3
   })
   observeEvent(input$genes_4, {
     values$featurePlots[["featurePlot_4"]] <- renderPlot(create_feature_plot(values$obj, input$genes_4, values))
     output$featurePlot_4 <- values$featurePlots[["featurePlot_4"]]
     values$violinPlotGenes[["violinPlotGene_4"]] <- renderPlot(create_violin_plot(values$obj, input$genes_4, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_4 <- values$violinPlotGenes[["violinPlotGene_4"]]
-    values$selected_genes[["genes_4"]] = input$genes_4 
+    values$selected_genes[["genes_4"]] = input$genes_4
   })
 
-  observeEvent(input$annotate, {
-    show_modal_spinner(text = "updating annotations")
-    clusters_list <- strsplit(input$clusters, "\\s+")
-    if (input$annotation %in% values$annotations) {
-      for (cluster in clusters_list) {
-        values$annotations[[input$annotation]] <- append(values$annotations[[input$annotation]], cluster)
-      }
-    }
-    else {
-      values$annotations[[input$annotation]] = list()
-      for (cluster in clusters_list) {
-        values$annotations[[input$annotation]] <- append(values$annotations[[input$annotation]], cluster)
-      }
-    }
-    # for (cluster in clusters_list) {
-    #   values$annotation_show[[cluster]] <- input$annotation
-    # }
-  })
+  # observeEvent(input$annotate, {
+  #   show_modal_spinner(text = "updating annotations")
+  #   clusters_list <- strsplit(input$clusters, "\\s+")
+  #   if (input$annotation %in% values$annotations) {
+  #     for (cluster in clusters_list) {
+  #       values$annotations[[input$annotation]] <- append(values$annotations[[input$annotation]], cluster)
+  #     }
+  #   }
+  #   else {
+  #     values$annotations[[input$annotation]] = list()
+  #     for (cluster in clusters_list) {
+  #       values$annotations[[input$annotation]] <- append(values$annotations[[input$annotation]], cluster)
+  #     }
+  #   }
+  #   # for (cluster in clusters_list) {
+  #   #   values$annotation_show[[cluster]] <- input$annotation
+  #   # }
+  # })
 
   observeEvent(values$obj, {
     if (!is.null(values$obj)) {
@@ -553,6 +562,7 @@ server <- function(input, output, session) {
       updateSelectizeInput(session, "genes_2", choices = rownames(values$obj), selected = values$selected_genes[["genes_2"]], server = TRUE)
       updateSelectizeInput(session, "genes_3", choices = rownames(values$obj), selected = values$selected_genes[["genes_3"]], server = TRUE)
       updateSelectizeInput(session, "genes_4", choices = rownames(values$obj), selected = values$selected_genes[["genes_4"]], server = TRUE)
+      updateSelectizeInput(session, "annotation_column", choices = colnames(values$obj@meta.data))
       updateSelectInput(session, "clusters", choices = names(values$cluster_cell_counts))
     }
   })
