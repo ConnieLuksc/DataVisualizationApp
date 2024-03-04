@@ -18,7 +18,6 @@ library(DT)
 library(purrr)
 library(pheatmap)
 library(htmlwidgets)
-
 library(networkD3)
 library(edgeR)
 
@@ -71,7 +70,8 @@ create_metadata_UMAP <- function(obj, col, pc, resolution, values) {
     obj <- FindNeighbors(obj, dims = 1:pc)
     obj <- FindClusters(obj, resolution = resolution)
     obj <- RunUMAP(obj, dims = 1:pc)
-    umap <- DimPlot(obj, pt.size = .1, label = FALSE, label.size = 4, group.by = col, reduction = "umap") # nolint: line_length_linter.
+    colors <- rainbow(length(levels(Idents(obj))))
+    umap <- DimPlot(obj, pt.size = .1, label = FALSE, label.size = 4, group.by = col, reduction = "umap", cols=colors) # nolint: line_length_linter.
     remove_modal_spinner()
     values$obj <- obj
     values$umap <- umap
@@ -94,6 +94,7 @@ create_feature_plot <- function(obj, genes, values) {
     if(!is.null(genes)){
         genes_list <- strsplit(genes, "\\s+")
         obj <- AddModuleScore(obj, features = genes_list, name = "feature_plot")
+        # colors <- rainbow(length(levels(Idents(obj))))
         FP <- FeaturePlot(obj, features = "feature_plot1", label = TRUE, repel = TRUE)   
     }
 
@@ -110,24 +111,19 @@ create_feature_plot <- function(obj, genes, values) {
     return(FP)
 }
 
-create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
+create_violin_plot <- function(obj, genes = NULL, values, ncol = NULL, pt.size) {
     VP <- NULL
+    colors <- rainbow(length(levels(Idents(obj))))
 
-    if(!is.null(genes)){
+    if(!is.null(genes) && length(genes) > 0){
         genes_list <- strsplit(genes, "\\s+")
         obj <- AddModuleScore(obj, features = genes_list, name = "violin_plot")
-        VP <- VlnPlot(obj, features = "violin_plot1", pt.size = 0, combine = TRUE)   
+        VP <- VlnPlot(obj, features = "violin_plot1", pt.size = pt.size, combine = TRUE, cols = colors)
+    } else {
+        # Case when genes input is not provided
+        VP <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = ncol, pt.size = pt.size, cols = colors)
     }
 
-    # if (gene %in% rownames(obj)) {
-    #     VP <- VlnPlot(obj, features = gene, pt.size = 0, combine = FALSE)
-    # }else{
-    #     VP <- ggplot() +
-    #     theme_void() +
-    #     geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
-    #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
-    # }
-    # values$violin <- VP
     return(VP)
 }
 

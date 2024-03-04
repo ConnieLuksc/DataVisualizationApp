@@ -46,20 +46,23 @@ ui <- fluidPage(
           ),
           fluidRow(
             column(
-              4,
+              6,
               plotOutput("heatmapPlot")
             ),
             column(
-              4,
+              6,
               plotOutput(outputId = "mdsPlot")
-            ),
+            )
+
+          ),
+          fluidRow(
             column(
-              4,
-              uiOutput(outputId = "sankeyPlot")
-            ),
-            column(
-              4,
+              6,
               plotOutput(outputId = "umap_annotation")
+            ),
+            column(
+              6,
+              uiOutput(outputId = "sankeyPlot")
             )
           )
         ),
@@ -150,6 +153,7 @@ server <- function(input, output, session) {
       # })
 
       output$violinPlot <- renderPlot({
+<<<<<<< HEAD
         if (!is.na(input$pc) &&
           !is.na(input$resolution) &&
           !is.null(values$obj)) {
@@ -158,7 +162,14 @@ server <- function(input, output, session) {
           values$violinPlot <- violinPlot
           violinPlot
         }
+=======
+          if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
+              values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
+              create_violin_plot(values$obj, values = values, ncol = 3, pt.size = 0)
+          }
+>>>>>>> 2a24397393fc56dc75ab34231bbd069f26fffb1b
       })
+
 
       output$violinPlotGene <- renderPlot({
         if (!is.null(input$gene)) {
@@ -225,14 +236,25 @@ server <- function(input, output, session) {
         # Plot the heatmap
 
         values$heatmap <- pheatmap(correlation_matrix,
+<<<<<<< HEAD
                                    clustering_distance_rows = "euclidean",
                                    clustering_distance_cols = "euclidean",
                                    clustering_method = "complete",
                                    color = colorRampPalette(c("yellow", "orange", "red"))(50),
                                    annotation_col = cluster_annotation,
                                    annotation_colors = annotation_colors)
+=======
+                          clustering_distance_rows = "euclidean",
+                          clustering_distance_cols = "euclidean",
+                          clustering_method = "complete",
+                          color = colorRampPalette(c("yellow", "orange", "red"))(50),
+                          annotation_col = cluster_annotation,
+                          annotation_colors = annotation_colors)
+
+>>>>>>> 2a24397393fc56dc75ab34231bbd069f26fffb1b
         values$heatmap
-      })
+      }, height = function() { 350 }, width = function() { 500 })
+
 
 
       output$cluster_cell_counts <- DT::renderDataTable({
@@ -439,20 +461,23 @@ server <- function(input, output, session) {
                       ),
                       fluidRow(
                         column(
-                          4,
+                          6,
                           plotOutput(paste0("heatmapPlot", values$count))
                         ),
                         column(
-                          4,
+                          6,
                           plotOutput(paste0("mdsPlot", values$count))
-                        ),
+                        )
+
+                      ),
+                      fluidRow(
                         column(
-                          4,
-                          uiOutput(paste0("sankeyPlot", values$count))
-                        ),
-                        column(
-                          4,
+                          6,
                           plotOutput(paste0("umap_annotation", values$count))
+                        ),
+                        column(
+                          6,
+                          uiOutput(paste0("sankeyPlot", values$count))
                         )
                       )
                     ),
