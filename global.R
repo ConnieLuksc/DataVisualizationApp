@@ -163,16 +163,14 @@ create_mds_plot <- function(obj, values) {
 create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation) {
   tryCatch(
   {
-    obj <- FindNeighbors(obj, dims = 1:pc)
-    obj <- FindClusters(obj, resolution = resolution)
-    obj <- RunUMAP(obj, dims = 1:pc)
-    umap <- DimPlot(obj,
+    obj1 <- RunUMAP(obj, dims = 1:pc)
+    umap <- DimPlot(obj1,
                     pt.size = .1, label = FALSE,
-                    label.size = 4, group.by = "Annotation",
+                    label.size = 4, group.by = annotation,
                     reduction = "umap"
     )
     remove_modal_spinner()
-    values$obj <- obj
+    # values$obj <- obj
     values$umap_annotation <- umap
     return(umap)
   },
@@ -188,7 +186,6 @@ create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation)
           color = "gray73", fontface = "bold"
         ) +
         theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
-      values$obj <- NULL
       # remove_modal_spinner()
       return(umap)
     }
@@ -197,10 +194,9 @@ create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation)
 
 # sankey plot
 create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_num) {
-  # obj <- FindNeighbors(obj, dims = 1:pc)
-  # obj <- FindClusters(obj, resolution = resolution)
   cluster_info <- as.data.frame(obj$seurat_clusters)
-  annotation_info <- as.data.frame(obj$Annotation)
+  # annotation_info <- as.data.frame(obj$Annotation)
+  annotation_info <- as.data.frame(obj[[annotation]])
   transitions <- data.frame(From = character(), To = character())
 
   # record transition
@@ -228,7 +224,6 @@ create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_
   # colors <- rainbow(length(unique_from))
   colors <- values$color
   names(colors) <- unique_from
-  print(colors)
 
   transition_data$Color <- colors[as.character(transition_data$From)]
 
