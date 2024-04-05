@@ -7,10 +7,23 @@ ui <- fluidPage(
   tabsetPanel(
     id = "main_tabs",
     tabPanel(
-      "Tab 1",
+      "Initial Step",
       fluidRow(
         column(2,
-               fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
+        fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
+        selectInput("normalization_method", "Normalization Methods", c("LogNormalize", "CLR", "RC", "sctransform")),
+        actionButton("normalize", "Normalize")
+        ),
+        column(10,
+        
+        )
+      )
+    ),
+    tabPanel(
+      "Clustering",
+      fluidRow(
+        column(2,
+              #  fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
                actionButton("reset", "Reset", class = "reset-btn"),
                actionButton("run", "Run", class = "run-btn"),
                numericInput("pc", "PC", value = NA),
@@ -71,7 +84,6 @@ ui <- fluidPage(
           width = 2,
           style = "overflow-y: scroll; max-height: 600px;",
           textOutput(outputId = "text_output"),
-          # verbatimTextOutput("cluster_cell_counts"),
           DT::dataTableOutput("cluster_cell_counts"),
           uiOutput("dynamic_elements")
         )
@@ -85,7 +97,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   pcValue <- reactiveVal(NA)
   resolutionValue <- reactiveVal(NA)
-  options(shiny.maxRequestSize = 300 * 1024^2)
+  options(shiny.maxRequestSize = 800 * 1024^2)
   clicked_link <- reactiveVal(FALSE)
   values <- reactiveValues()
   values$saved_list <- list()
@@ -104,6 +116,7 @@ server <- function(input, output, session) {
       shinyjs::enable("run")
       shinyjs::enable("pc")
       shinyjs::enable("resolution")
+      values$obj <- load_seurat_obj(input$file$datapath)
     } else {
       shinyjs::disable("run")
       shinyjs::disable("pc")
@@ -117,6 +130,22 @@ server <- function(input, output, session) {
     updateUI(!is.null(input$file))
   })
 
+  # Normalization
+  observeEvent(input$normalize, {
+      obj <- values$obj
+      obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
+      if(input$normalization_method == "sctransform"){
+        obj <- SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
+      }else{
+        obj <- NormalizeData(obj, normalization_method = input$normalization_method)
+        obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+        all.genes <- rownames(obj)
+        obj <- ScaleData(obj, features = all.genes)
+      }
+      values$obj <- obj
+
+  })
+
   observeEvent(input$run, {
     shinyjs::disable("run")
     shinyjs::disable("update")
@@ -124,10 +153,10 @@ server <- function(input, output, session) {
     resolutionValue(as.numeric(input$resolution))
     values$annotations <- input$annotation_column
     # Assuming load_seurat_obj is a function you've defined to load the Seurat object
-    obj <- load_seurat_obj(input$file$datapath)
-    values$obj <- obj
+    # obj <- load_seurat_obj(input$file$datapath)
+    # values$obj <- obj
+    obj <- values$obj
     values$run_triggered <- reactiveVal(FALSE)
-    # values$selected_gene <- rownames(obj)[1]
 
     if (is.vector(values$obj)) {
       # Handle error in file upload or object loading
@@ -140,11 +169,7 @@ server <- function(input, output, session) {
       output$umap <- renderPlot({
         if (!is.na(pcValue()) && !is.na(resolutionValue())) {
           show_modal_spinner(text = "Preparing plots...")
-          create_metadata_UMAP(
-            obj, "seurat_clusters",
-            pcValue(), resolutionValue(),
-            values
-          )
+          create_metadata_UMAP(obj, pcValue(), resolutionValue(),values)
         } else {
           ggplot() +
             theme_void() +
@@ -152,12 +177,6 @@ server <- function(input, output, session) {
             theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
         }
       })
-
-      # output$featurePlot <- renderPlot({
-      #   if (!is.null(input$genes)) {
-      #     create_feature_plot(values$obj, input$genes, values)
-      #   }
-      # })
 
       output$violinPlot <- renderPlot({
           if (!is.na(pcValue()) && !is.na(resolutionValue()) && !is.null(values$obj)) {
@@ -208,8 +227,6 @@ server <- function(input, output, session) {
         # cluster_colors <- grDevices::rainbow(length(all_clusters))
         set.seed(123)
         colors <- rainbow(length(all_clusters))
-        print("colors")
-        print(colors)
         names(colors) <- all_clusters
         cluster_annotation <- data.frame(Cluster = colnames(data_matrix))
         rownames(cluster_annotation) <- colnames(data_matrix)
@@ -237,7 +254,6 @@ server <- function(input, output, session) {
       }, height = function() { 350 }, width = function() { 500 })
 
 
-
       output$cluster_cell_counts <- DT::renderDataTable({
         cluster_ids <- Idents(values$obj)
         values$cluster_cell_counts <- table(cluster_ids)
@@ -259,7 +275,7 @@ server <- function(input, output, session) {
       })
 
       output$umap_annotation <- renderPlot({
-        create_annotation_UMAP(obj, "seurat_clusters", pcValue(), resolutionValue(), values, values$annotations)
+        create_annotation_UMAP(obj, pcValue(), resolutionValue(), values, values$annotations)
       })
 
       output$unavailable_sankey <- renderPlot({
@@ -384,7 +400,7 @@ server <- function(input, output, session) {
               output[[paste0("violinPlotGene_4", values$count)]] <- current_saved_list[[key]]$violinPlotGene_4 # nolint
               output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
               output[[paste0("heatmapPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$heatmap)
-              output[[paste0("mdsPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$plotmds)
+              output[[paste0("mdsPlot", values$count)]] <- renderPlot(plot(current_saved_list[[key]]$plotmds))
               print(current_saved_list[[key]]$plotmds)
               output[[paste0("umap_annotation", values$count)]] <- renderPlot(current_saved_list[[key]]$annotation_umap) # nolint
               output[[paste0("textoutput", values$count)]] <- renderText({
