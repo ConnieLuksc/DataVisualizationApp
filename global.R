@@ -21,6 +21,7 @@ library(htmlwidgets)
 library(networkD3)
 library(edgeR)
 library(stringr)
+library(sctransform)
 
 # set.seed(123)
 # Read in file and perform validation.
@@ -49,18 +50,6 @@ load_seurat_obj <- function(path) {
     return(errors)
   }
 
-  # mock annotation column in metadata
-  annotation <- list(ambiguous = list(0, 8), cd45.1 = list(1, 3), cd45.2 = list(2, 4, 6), cd45.3 = list(5, 7))
-  new_metadata <- rep(NA, nrow(obj))
-  # assign cluster with annotation
-  for (key in names(annotation)) {
-    clusters <- unlist(annotation[[key]])
-    for (cluster in clusters) {
-      new_metadata[obj$seurat_clusters == cluster] <- key
-    }
-  }
-  obj <- AddMetaData(obj, metadata = new_metadata, col.name = "Annotation")
-
   return(obj)
 }
 
@@ -72,7 +61,8 @@ create_metadata_UMAP <- function(obj, col, pc, resolution, values) {
     obj <- FindClusters(obj, resolution = resolution)
     obj <- RunUMAP(obj, dims = 1:pc)
     colors <- rainbow(length(levels(Idents(obj))))
-    umap <- DimPlot(obj, pt.size = .1, label = FALSE, label.size = 4, group.by = col, reduction = "umap", cols=colors) # nolint: line_length_linter.
+    umap <- DimPlot(obj, pt.size = .1, label = FALSE, label.size = 4, reduction = "umap", cols=colors) 
+    # umap <- DimPlot(obj, pt.size = .1, label = FALSE, label.size = 4, group.by = col, reduction = "umap", cols=colors) 
     remove_modal_spinner()
     values$obj <- obj
     values$umap <- umap
@@ -101,16 +91,6 @@ create_feature_plot <- function(obj, genes, values) {
       theme(plot.title = element_text(size = 12)) 
     }
 
-
-    # if (gene %in% rownames(obj)) {
-        # FP <- FeaturePlot(obj, features = gene, pt.size = 0.001, combine = FALSE)
-    # } else {
-    #     FP <- ggplot() +
-    #     theme_void() +
-    #     geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
-    #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
-    # }
-    # values$feature <- FP
     return(FP)
 }
 
@@ -125,16 +105,7 @@ create_violin_plot <- function(obj, genes, values, ncol, pt.size) {
         VP <- VlnPlot(obj, features = paste0(combined_genes, "1"), pt.size = 0, combine = TRUE)+labs(title = wrapped_title) +
       theme(plot.title = element_text(size = 12))   
     }
-
-    # if (gene %in% rownames(obj)) {
-    #     VP <- VlnPlot(obj, features = gene, pt.size = 0, combine = FALSE)
-    # }else{
-    #     VP <- ggplot() +
-    #     theme_void() +
-    #     geom_text(aes(x = 0.5, y = 0.5, label = str_wrap("Gene doesn't exist", width=20)), size = 12, color = "gray73", fontface = "bold") +
-    #     theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
-    # }
-    # values$violin <- VP
+    
     return(VP)
 }
 
