@@ -20,11 +20,12 @@ ui <- fluidPage(
                selectizeInput('genes_3', NULL, choices = NULL, multiple = TRUE),
                selectizeInput('genes_4', NULL, choices = NULL, multiple = TRUE),
                selectizeInput('annotation_column', label = 'annotation_column',  choices = NULL),
-               selectInput('clusters', 'Clusters', choices = NULL, multiple = TRUE, selectize = TRUE),
-               textInput("annotation", "Annotation"),
-               selectizeInput("gene", "Genes", choices = NULL),
-               actionButton("annotate", "Annotate"),
-               actionButton("save", "Save", class = "save-btn")
+               # selectInput('clusters', 'Clusters', choices = NULL, multiple = TRUE, selectize = TRUE),
+               # textInput("annotation", "Annotation"),
+               # selectizeInput("gene", "Genes", choices = NULL),
+               # actionButton("annotate", "Annotate"),
+               actionButton("save", "Save", class = "save-btn"),
+               actionButton("update", "Update", class = "update-btn")
         ),
         column(
           8,
@@ -82,6 +83,8 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output, session) {
+  pcValue <- reactiveVal(NA)
+  resolutionValue <- reactiveVal(NA)
   options(shiny.maxRequestSize = 300 * 1024^2)
   clicked_link <- reactiveVal(FALSE)
   values <- reactiveValues()
@@ -106,6 +109,7 @@ server <- function(input, output, session) {
       shinyjs::disable("pc")
       shinyjs::disable("resolution")
       shinyjs::disable("save")
+      shinyjs::disable("update")
     }
   }
 
@@ -115,7 +119,10 @@ server <- function(input, output, session) {
 
   observeEvent(input$run, {
     shinyjs::disable("run")
-
+    shinyjs::disable("update")
+    pcValue(as.numeric(input$pc))
+    resolutionValue(as.numeric(input$resolution))
+    values$annotations <- input$annotation_column
     # Assuming load_seurat_obj is a function you've defined to load the Seurat object
     obj <- load_seurat_obj(input$file$datapath)
     values$obj <- obj
@@ -131,11 +138,11 @@ server <- function(input, output, session) {
       shinyjs::enable("run")
     } else {
       output$umap <- renderPlot({
-        if (!is.na(input$pc) && !is.na(input$resolution)) {
+        if (!is.na(pcValue()) && !is.na(resolutionValue())) {
           show_modal_spinner(text = "Preparing plots...")
           create_metadata_UMAP(
             obj, "seurat_clusters",
-            input$pc, input$resolution,
+            pcValue(), resolutionValue(),
             values
           )
         } else {
@@ -153,7 +160,7 @@ server <- function(input, output, session) {
       # })
 
       output$violinPlot <- renderPlot({
-          if (!is.na(input$pc) && !is.na(input$resolution) && !is.null(values$obj)) {
+          if (!is.na(pcValue()) && !is.na(resolutionValue()) && !is.null(values$obj)) {
               values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
               violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
               values$violinPlot <- violinPlot
@@ -252,7 +259,7 @@ server <- function(input, output, session) {
       })
 
       output$umap_annotation <- renderPlot({
-        create_annotation_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values, values$annotations)
+        create_annotation_UMAP(obj, "seurat_clusters", pcValue(), resolutionValue(), values, values$annotations)
       })
 
       output$unavailable_sankey <- renderPlot({
@@ -269,7 +276,7 @@ server <- function(input, output, session) {
       })
 
       output$sankeyPlot <- renderUI({
-        create_sankey_plot(values$obj, values, input$pc, input$resolution, values$annotations, values$cluster_cell_counts)
+        create_sankey_plot(values$obj, values, pcValue(), resolutionValue(), values$annotations, values$cluster_cell_counts)
       })
 
 
@@ -280,6 +287,7 @@ server <- function(input, output, session) {
 
       shinyjs::enable("run")
       shinyjs::enable("save")
+      shinyjs::enable("update")
     }
   })
 
@@ -479,14 +487,25 @@ server <- function(input, output, session) {
     }
   })
 
+  # update pc value
+  observeEvent(input$update, {
+    pcValue(as.numeric(input$pc))
+    resolutionValue(as.numeric(input$resolution))
+    values$annotations <- input$annotation_column
+    values$genes_1 <- input$genes_1
+    values$genes_2 <- input$genes_2
+    values$genes_3 <- input$genes_3
+    values$genes_4 <- input$genes_4
+  })
+
   observeEvent(input$save, {
     ignore_button_clicked <<- TRUE
     print("save")
     print(ignore_button_clicked)
     new_index <- paste0("item", length(values$saved_list) + 1)
     saved_list_tmp <- list(
-      file = input$file$datapath, pc = input$pc,
-      resolution = input$resolution, gene = input$gene,
+      file = input$file$datapath, pc = pcValue(),
+      resolution = resolutionValue(), gene = input$gene,
       cluster = values$cluster_cell_counts, umap = values$umap,
       violin = values$violinPlot, heatmap = values$heatmap,
       featurePlot_1 = values$featurePlots[["featurePlot_1"]], violinPlotGene_1 = values$violinPlotGenes[["violinPlotGene_1"]],
@@ -500,40 +519,40 @@ server <- function(input, output, session) {
   })
 
   # choose annotation colum from meta data
-  observeEvent(input$annotation_column, {
-    # print(input$annotation_column)
-    values$annotations <- input$annotation_column
-  })
+  # observeEvent(input$annotation_column, {
+  #   # print(input$annotation_column)
+  #   values$annotations <- input$annotation_column
+  # })
 
 
   #feature plot and violin plot for gene
-  observeEvent(input$genes_1, {
-    values$featurePlots[["featurePlot_1"]] <- renderPlot(create_feature_plot(values$obj, input$genes_1, values))
+  observeEvent(values$genes_1, {
+    values$featurePlots[["featurePlot_1"]] <- renderPlot(create_feature_plot(values$obj, values$genes_1, values))
     output$featurePlot_1 <- values$featurePlots[["featurePlot_1"]]
-    values$violinPlotGenes[["violinPlotGene_1"]] <- renderPlot(create_violin_plot(values$obj, input$genes_1, values, ncol = NULL, pt.size = 0))
+    values$violinPlotGenes[["violinPlotGene_1"]] <- renderPlot(create_violin_plot(values$obj, values$genes_1, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_1 <- values$violinPlotGenes[["violinPlotGene_1"]]
-    values$selected_genes[["genes_1"]] = input$genes_1
+    values$selected_genes[["genes_1"]] = values$genes_1
   })
-  observeEvent(input$genes_2, {
-    values$featurePlots[["featurePlot_2"]] <- renderPlot(create_feature_plot(values$obj, input$genes_2, values))
+  observeEvent(values$genes_2, {
+    values$featurePlots[["featurePlot_2"]] <- renderPlot(create_feature_plot(values$obj, values$genes_2, values))
     output$featurePlot_2 <- values$featurePlots[["featurePlot_2"]]
-    values$violinPlotGenes[["violinPlotGene_2"]] <- renderPlot(create_violin_plot(values$obj, input$genes_2, values, ncol = NULL, pt.size = 0))
+    values$violinPlotGenes[["violinPlotGene_2"]] <- renderPlot(create_violin_plot(values$obj, values$genes_2, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_2 <- values$violinPlotGenes[["violinPlotGene_2"]]
-    values$selected_genes[["genes_2"]] = input$genes_2
+    values$selected_genes[["genes_2"]] = values$genes_2
   })
-  observeEvent(input$genes_3, {
-    values$featurePlots[["featurePlot_3"]] <- renderPlot(create_feature_plot(values$obj, input$genes_3, values))
+  observeEvent(values$genes_3, {
+    values$featurePlots[["featurePlot_3"]] <- renderPlot(create_feature_plot(values$obj, values$genes_3, values))
     output$featurePlot_3 <- values$featurePlots[["featurePlot_3"]]
-    values$violinPlotGenes[["violinPlotGene_3"]] <- renderPlot(create_violin_plot(values$obj, input$genes_3, values, ncol = NULL, pt.size = 0))
+    values$violinPlotGenes[["violinPlotGene_3"]] <- renderPlot(create_violin_plot(values$obj, values$genes_3, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_3 <- values$violinPlotGenes[["violinPlotGene_3"]]
-    values$selected_genes[["genes_3"]] = input$genes_3
+    values$selected_genes[["genes_3"]] = values$genes_3
   })
-  observeEvent(input$genes_4, {
-    values$featurePlots[["featurePlot_4"]] <- renderPlot(create_feature_plot(values$obj, input$genes_4, values))
+  observeEvent(values$genes_4, {
+    values$featurePlots[["featurePlot_4"]] <- renderPlot(create_feature_plot(values$obj, values$genes_4, values))
     output$featurePlot_4 <- values$featurePlots[["featurePlot_4"]]
-    values$violinPlotGenes[["violinPlotGene_4"]] <- renderPlot(create_violin_plot(values$obj, input$genes_4, values, ncol = NULL, pt.size = 0))
+    values$violinPlotGenes[["violinPlotGene_4"]] <- renderPlot(create_violin_plot(values$obj, values$genes_4, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_4 <- values$violinPlotGenes[["violinPlotGene_4"]]
-    values$selected_genes[["genes_4"]] = input$genes_4
+    values$selected_genes[["genes_4"]] = values$genes_4
   })
 
   # observeEvent(input$annotate, {
