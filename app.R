@@ -113,6 +113,7 @@ server <- function(input, output, session) {
       shinyjs::enable("run")
       shinyjs::enable("pc")
       shinyjs::enable("resolution")
+      values$obj <- load_seurat_obj(input$file$datapath)
     } else {
       shinyjs::disable("run")
       shinyjs::disable("pc")
@@ -127,7 +128,7 @@ server <- function(input, output, session) {
 
   # Normalization
   observeEvent(input$normalize, {
-      obj <- load_seurat_obj(input$file$datapath)
+      obj <- values$obj
       obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
       if(input$normalization_method == "sctransform"){
         obj <- SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
@@ -147,6 +148,7 @@ server <- function(input, output, session) {
     # Assuming load_seurat_obj is a function you've defined to load the Seurat object
     # obj <- load_seurat_obj(input$file$datapath)
     # values$obj <- obj
+    obj <- values$obj
     values$run_triggered <- reactiveVal(FALSE)
 
     if (is.vector(values$obj)) {
@@ -160,11 +162,7 @@ server <- function(input, output, session) {
       output$umap <- renderPlot({
         if (!is.na(input$pc) && !is.na(input$resolution)) {
           show_modal_spinner(text = "Preparing plots...")
-          create_metadata_UMAP(
-            obj, "seurat_clusters",
-            input$pc, input$resolution,
-            values
-          )
+          create_metadata_UMAP(obj, "seurat_clusters",input$pc, input$resolution,values)
         } else {
           ggplot() +
             theme_void() +
