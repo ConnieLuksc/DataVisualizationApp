@@ -54,7 +54,7 @@ load_seurat_obj <- function(path) {
 }
 
 
-create_metadata_UMAP <- function(obj, col, pc, resolution, values) {
+create_metadata_UMAP <- function(obj, pc, resolution, values) {
   tryCatch(
   {
     obj <- FindNeighbors(obj, dims = 1:pc)
@@ -131,7 +131,7 @@ create_mds_plot <- function(obj, values) {
 }
 
 # visualize annotation
-create_annotation_UMAP <- function(obj, col, pc, resolution, values, annotation) {
+create_annotation_UMAP <- function(obj, pc, resolution, values, annotation) {
   tryCatch(
   {
     obj1 <- RunUMAP(obj, dims = 1:pc)

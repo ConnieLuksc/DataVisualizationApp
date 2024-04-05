@@ -162,7 +162,7 @@ server <- function(input, output, session) {
       output$umap <- renderPlot({
         if (!is.na(input$pc) && !is.na(input$resolution)) {
           show_modal_spinner(text = "Preparing plots...")
-          create_metadata_UMAP(obj, "seurat_clusters",input$pc, input$resolution,values)
+          create_metadata_UMAP(obj, input$pc, input$resolution,values)
         } else {
           ggplot() +
             theme_void() +
@@ -268,7 +268,7 @@ server <- function(input, output, session) {
       })
 
       output$umap_annotation <- renderPlot({
-        create_annotation_UMAP(obj, "seurat_clusters", input$pc, input$resolution, values, values$annotations)
+        create_annotation_UMAP(obj, input$pc, input$resolution, values, values$annotations)
       })
 
       output$unavailable_sankey <- renderPlot({
