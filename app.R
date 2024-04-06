@@ -10,8 +10,8 @@ ui <- fluidPage(
       "Initial Step",
       fluidRow(
         column(2,
-        helpText("Please upload RDS file without normalization and clustering"),
-        fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
+        helpText("Please upload your data(.csv, .xlsx, .rds) without normalization and clustering"),
+        fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds', '.csv', '.xlsx')),
         selectInput("normalization_method", "Normalization Methods", c("LogNormalize", "CLR", "RC", "sctransform")),
         actionButton("normalize", "Normalize")
         ),
@@ -111,6 +111,46 @@ server <- function(input, output, session) {
   values$annotations <- list()
   values$cluster_num <- 0
   values$annotation_show <- reactive({ rep("NA", times = values$cluster_num) })
+
+  observe({
+    req(input$file)
+    file <- input$file
+    ext <- tools::file_ext(file$name)
+
+  # Depending on the file extension, read the appropriate type of file
+    seurat_object <- reactive({
+      switch(ext,
+        'csv' = {
+          data <- read.csv(file$datapath, row.names = 1)
+          CreateSeuratObject(counts = data, project = "UploadedData", min.cells = 3, min.features = 200)
+        },
+        'xlsx' = {
+          data <- readxl::read_excel(file$datapath)
+          CreateSeuratObject(counts = data, project = "UploadedData", min.cells = 3, min.features = 200)
+        },
+        'rds' = {
+          readRDS(file$datapath)
+        },
+        stop("Unsupported file type: ", ext)
+      )
+    })
+
+    observeEvent(seurat_object(), {
+      # If the file is not an RDS, save the Seurat object as an RDS file
+      if (ext != 'rds') {
+        rds_path <- tempfile(fileext = ".rds")
+        saveRDS(seurat_object(), rds_path)
+        values$rds_path <- rds_path
+      } else {
+        values$rds_path <- file$datapath
+      }
+    })
+
+    # Make sure you have this line to update the values$obj with the Seurat object once the file is processed
+    observeEvent(seurat_object(), {
+      values$obj <- seurat_object()
+    })
+  })
 
 
   updateUI <- function(enable = TRUE) {
