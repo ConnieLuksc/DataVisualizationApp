@@ -10,6 +10,7 @@ ui <- fluidPage(
       "Initial Step",
       fluidRow(
         column(2,
+        helpText("Please upload RDS file without normalization and clustering"),
         fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
         selectInput("normalization_method", "Normalization Methods", c("LogNormalize", "CLR", "RC", "sctransform")),
         actionButton("normalize", "Normalize")
@@ -26,6 +27,7 @@ ui <- fluidPage(
               #  fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
                actionButton("reset", "Reset", class = "reset-btn"),
                actionButton("run", "Run", class = "run-btn"),
+               helpText("Please input resolution and PC before running:"),
                numericInput("pc", "PC", value = NA),
                numericInput("resolution", "Resolution", value = NA, step = 0.1),
                selectizeInput('genes_1', 'Genes', choices = NULL, multiple = TRUE),
@@ -142,7 +144,21 @@ server <- function(input, output, session) {
         all.genes <- rownames(obj)
         obj <- ScaleData(obj, features = all.genes)
       }
+
+      if ("sctransform" %in% rownames(obj@assays)) {
+        # SCTransform already performs scaling and PCA, so we only need to do this if not using SCTransform
+        obj <- RunPCA(obj, features = VariableFeatures(object = obj))
+      } else {
+        obj <- RunPCA(obj, features = VariableFeatures(object = obj), verbose = FALSE)
+      }
       values$obj <- obj
+
+      showModal(modalDialog(
+        title = "Process Complete",
+        "Normalization complete! Please go to Clustering tab to visualize data",
+        easyClose = TRUE,
+        footer = NULL
+      ))
 
   })
 
