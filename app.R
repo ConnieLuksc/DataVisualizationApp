@@ -133,34 +133,52 @@ server <- function(input, output, session) {
   })
 
   # Normalization
-  observeEvent(input$normalize, {
-      obj <- values$obj
-      obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
-      if(input$normalization_method == "sctransform"){
-        obj <- SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
-      }else{
-        obj <- NormalizeData(obj, normalization_method = input$normalization_method)
-        obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
-        all.genes <- rownames(obj)
-        obj <- ScaleData(obj, features = all.genes)
-      }
+observeEvent(input$normalize, {
+    tryCatch({
+        withProgress(message = 'Normalization in progress...', value = 0, {
+            for (i in 1:10) {
+                Sys.sleep(0.5)  # Simulate some processing time
+                incProgress(1, detail = "Normalization complete! Please go to Clustering tab to visualize data")
+            }
+        })
 
-      if ("sctransform" %in% rownames(obj@assays)) {
-        # SCTransform already performs scaling and PCA, so we only need to do this if not using SCTransform
-        obj <- RunPCA(obj, features = VariableFeatures(object = obj))
-      } else {
-        obj <- RunPCA(obj, features = VariableFeatures(object = obj), verbose = FALSE)
-      }
-      values$obj <- obj
+        # Add your normalization process here
+        obj <- values$obj
+        obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
+        if(input$normalization_method == "sctransform"){
+            obj <- SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
+        }else{
+            obj <- NormalizeData(obj, normalization_method = input$normalization_method)
+            obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+            all.genes <- rownames(obj)
+            obj <- ScaleData(obj, features = all.genes)
+        }
 
-      showModal(modalDialog(
-        title = "Process Complete",
-        "Normalization complete! Please go to Clustering tab to visualize data",
-        easyClose = TRUE,
-        footer = NULL
-      ))
+        if ("sctransform" %in% rownames(obj@assays)) {
+            obj <- RunPCA(obj, features = VariableFeatures(object = obj))
+        } else {
+            obj <- RunPCA(obj, features = VariableFeatures(object = obj), verbose = FALSE)
+        }
+        values$obj <- obj
 
-  })
+        # Show completion message
+        # showModal(modalDialog(
+        #     title = "Process Complete",
+        #     "Normalization complete! Please go to Clustering tab to visualize data",
+        #     easyClose = TRUE,
+        #     footer = NULL
+        # ))
+    }, error = function(e) {
+        # Error handling
+        showModal(modalDialog(
+            title = "Error",
+            paste("An error has occurred:", e$message),
+            easyClose = TRUE,
+            footer = NULL
+        ))
+    })
+})
+
 
   observeEvent(input$run, {
     shinyjs::disable("run")
