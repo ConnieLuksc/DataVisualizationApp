@@ -155,9 +155,11 @@ observeEvent(input$normalize, {
         }
 
         if ("sctransform" %in% rownames(obj@assays)) {
-            obj <- RunPCA(obj, features = VariableFeatures(object = obj))
+            num_pcs <- min(10, ncol(obj))
+            obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs)
         } else {
-            obj <- RunPCA(obj, features = VariableFeatures(object = obj), verbose = FALSE)
+            num_pcs <- min(10, ncol(obj))
+            obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs, verbose = FALSE)
         }
         values$obj <- obj
 
