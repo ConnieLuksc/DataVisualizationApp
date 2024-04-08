@@ -160,7 +160,7 @@ observeEvent(input$normalize, {
 
             for (i in 1:10) {
                 Sys.sleep(0.5)  # Simulate some processing time
-                incProgress(0.5, detail = "Normalization complete! Please go to Clustering tab to visualize data")
+                incProgress(1, detail = "Normalization complete! Please go to Clustering tab to visualize data")
             }
         })
 
