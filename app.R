@@ -136,32 +136,33 @@ server <- function(input, output, session) {
 observeEvent(input$normalize, {
     tryCatch({
         withProgress(message = 'Normalization in progress...', value = 0, {
+
+            # Add your normalization process here
+            obj <- values$obj
+            obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
+            if(input$normalization_method == "sctransform"){
+                obj <- SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
+            }else{
+                obj <- NormalizeData(obj, normalization_method = input$normalization_method)
+                obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+                all.genes <- rownames(obj)
+                obj <- ScaleData(obj, features = all.genes)
+            }
+
+            if ("sctransform" %in% rownames(obj@assays)) {
+                num_pcs <- min(10, ncol(obj))
+                obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs)
+            } else {
+                num_pcs <- min(10, ncol(obj))
+                obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs, verbose = FALSE)
+            }
+            values$obj <- obj
+
             for (i in 1:10) {
                 Sys.sleep(0.5)  # Simulate some processing time
-                incProgress(1, detail = "Normalization complete! Please go to Clustering tab to visualize data")
+                incProgress(0.5, detail = "Normalization complete! Please go to Clustering tab to visualize data")
             }
         })
-
-        # Add your normalization process here
-        obj <- values$obj
-        obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
-        if(input$normalization_method == "sctransform"){
-            obj <- SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
-        }else{
-            obj <- NormalizeData(obj, normalization_method = input$normalization_method)
-            obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
-            all.genes <- rownames(obj)
-            obj <- ScaleData(obj, features = all.genes)
-        }
-
-        if ("sctransform" %in% rownames(obj@assays)) {
-            num_pcs <- min(10, ncol(obj))
-            obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs)
-        } else {
-            num_pcs <- min(10, ncol(obj))
-            obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs, verbose = FALSE)
-        }
-        values$obj <- obj
 
         # Show completion message
         # showModal(modalDialog(
