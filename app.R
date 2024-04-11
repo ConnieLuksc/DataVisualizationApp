@@ -1,4 +1,4 @@
-source('global.R')
+source("global.R")
 
 # Define UI
 ui <- fluidPage(
@@ -9,38 +9,57 @@ ui <- fluidPage(
     tabPanel(
       "Initial Step",
       fluidRow(
-        column(2,
-        helpText("Please upload RDS file without normalization and clustering"),
-        fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
-        selectInput("normalization_method", "Normalization Methods", c("LogNormalize", "CLR", "RC", "sctransform")),
-        actionButton("normalize", "Normalize")
+        column(
+          2,
+          helpText("Please upload RDS file without normalization and clustering"),
+          fileInput("file", "Upload File", multiple = TRUE, accept = c(".rds")),
+          fluidRow(
+            column(6, numericInput("feature_upper", "nFeature_RNA", value = NA), style = "padding-right: 5px;"),
+            column(6, numericInput("feature_lower", HTML("&nbsp;"), value = NA), style = "padding-left: 5px;")
+          ),
+          fluidRow(
+            column(6, numericInput("count_upper", "nCount_RNA", value = NA), style = "padding-right: 5px;"),
+            column(6, numericInput("count_lower", HTML("&nbsp;"), value = NA), style = "padding-left: 5px;")
+          ),
+          fluidRow(
+            column(6, numericInput("percent_upper", "percent.mt", value = NA), style = "padding-right: 5px;"),
+            column(6, numericInput("percent_lower", HTML("&nbsp;"), value = NA), style = "padding-left: 5px;")
+          ),
+          actionButton("filter", "Filter"),
+          selectInput("normalization_method", "Normalization Methods", c("LogNormalize", "CLR", "RC", "sctransform")),
+          actionButton("normalize", "Normalize")
         ),
-        column(10,
-        
+        column(
+          10,
+          fluidRow(
+            column(5, plotOutput("filter_violinPlot")),
+            column(7, plotOutput("feature_scatter"))
+          )
         )
       )
     ),
     tabPanel(
       "Clustering",
       fluidRow(
-        column(2,
-              #  fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
-               actionButton("reset", "Reset", class = "reset-btn"),
-               actionButton("run", "Run", class = "run-btn"),
-               helpText("Please input resolution and PC before running:"),
-               numericInput("pc", "PC", value = NA),
-               numericInput("resolution", "Resolution", value = NA, step = 0.1),
-               selectizeInput('genes_1', 'Genes', choices = NULL, multiple = TRUE),
-               selectizeInput('genes_2', NULL, choices = NULL, multiple = TRUE),
-               selectizeInput('genes_3', NULL, choices = NULL, multiple = TRUE),
-               selectizeInput('genes_4', NULL, choices = NULL, multiple = TRUE),
-               selectizeInput('annotation_column', label = 'annotation_column',  choices = NULL),
-               # selectInput('clusters', 'Clusters', choices = NULL, multiple = TRUE, selectize = TRUE),
-               # textInput("annotation", "Annotation"),
-               # selectizeInput("gene", "Genes", choices = NULL),
-               # actionButton("annotate", "Annotate"),
-               actionButton("save", "Save", class = "save-btn"),
-               actionButton("update", "Update", class = "update-btn")
+        column(
+          2,
+          #  fileInput("file", "Upload File", multiple = TRUE, accept = c('.rds')),
+          actionButton("reset", "Reset", class = "reset-btn"),
+          actionButton("run", "Run", class = "run-btn"),
+          helpText("Please input resolution and PC before running:"),
+          numericInput("pc", "PC", value = NA),
+          numericInput("resolution", "Resolution", value = NA, step = 0.1),
+          selectizeInput("genes_1", "Genes", choices = NULL, multiple = TRUE),
+          selectizeInput("genes_2", NULL, choices = NULL, multiple = TRUE),
+          selectizeInput("genes_3", NULL, choices = NULL, multiple = TRUE),
+          selectizeInput("genes_4", NULL, choices = NULL, multiple = TRUE),
+          selectizeInput("annotation_column", label = "annotation_column", choices = NULL),
+          # selectInput('clusters', 'Clusters', choices = NULL, multiple = TRUE, selectize = TRUE),
+          # textInput("annotation", "Annotation"),
+          # selectizeInput("gene", "Genes", choices = NULL),
+          # actionButton("annotate", "Annotate"),
+          actionButton("save", "Save", class = "save-btn"),
+          actionButton("update", "Update", class = "update-btn")
         ),
         column(
           8,
@@ -49,16 +68,16 @@ ui <- fluidPage(
             column(7, plotOutput("umap")),
           ),
           fluidRow(
-            column(3, plotOutput(outputId = 'featurePlot_1', height = '225px')),
-            column(3, plotOutput(outputId = 'featurePlot_2', height = '225px')),
-            column(3, plotOutput(outputId = 'featurePlot_3', height = '225px')),
-            column(3, plotOutput(outputId = 'featurePlot_4', height = '225px'))
+            column(3, plotOutput(outputId = "featurePlot_1", height = "225px")),
+            column(3, plotOutput(outputId = "featurePlot_2", height = "225px")),
+            column(3, plotOutput(outputId = "featurePlot_3", height = "225px")),
+            column(3, plotOutput(outputId = "featurePlot_4", height = "225px"))
           ),
           fluidRow(
-            column(3, plotOutput(outputId = 'violinPlotGene_1', height = '225px')),
-            column(3, plotOutput(outputId = 'violinPlotGene_2', height = '225px')),
-            column(3, plotOutput(outputId = 'violinPlotGene_3', height = '225px')),
-            column(3, plotOutput(outputId = 'violinPlotGene_4', height = '225px'))
+            column(3, plotOutput(outputId = "violinPlotGene_1", height = "225px")),
+            column(3, plotOutput(outputId = "violinPlotGene_2", height = "225px")),
+            column(3, plotOutput(outputId = "violinPlotGene_3", height = "225px")),
+            column(3, plotOutput(outputId = "violinPlotGene_4", height = "225px"))
           ),
           fluidRow(
             column(
@@ -69,7 +88,6 @@ ui <- fluidPage(
               6,
               plotOutput(outputId = "mdsPlot")
             )
-
           ),
           fluidRow(
             column(
@@ -110,7 +128,9 @@ server <- function(input, output, session) {
   values$violinPlotGenes <- list(violinPlotGene_1 = NULL, violinPlotGene_2 = NULL, violinPlotGene_3 = NULL, violinPlotGene_4 = NULL)
   values$annotations <- list()
   values$cluster_num <- 0
-  values$annotation_show <- reactive({ rep("NA", times = values$cluster_num) })
+  values$annotation_show <- reactive({
+    rep("NA", times = values$cluster_num)
+  })
 
 
   updateUI <- function(enable = TRUE) {
@@ -118,7 +138,6 @@ server <- function(input, output, session) {
       shinyjs::enable("run")
       shinyjs::enable("pc")
       shinyjs::enable("resolution")
-      values$obj <- load_seurat_obj(input$file$datapath)
     } else {
       shinyjs::disable("run")
       shinyjs::disable("pc")
@@ -128,40 +147,80 @@ server <- function(input, output, session) {
     }
   }
 
+  updateFilter <- function(enable = TRUE) {
+    if (enable) {
+      obj <- load_seurat_obj(input$file$datapath)
+      obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
+      output$filter_violinPlot <- renderPlot(VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0))
+      output$feature_scatter <- renderPlot(create_feature_scatter(obj))
+      updateNumericInput(session, "feature_upper", value = max(obj@meta.data[["nFeature_RNA"]]))
+      updateNumericInput(session, "feature_lower", value = min(obj@meta.data[["nFeature_RNA"]]))
+      updateNumericInput(session, "count_upper", value = max(obj@meta.data[["nCount_RNA"]]))
+      updateNumericInput(session, "count_lower", value = min(obj@meta.data[["nCount_RNA"]]))
+      updateNumericInput(session, "percent_upper", value = max(obj@meta.data[["percent.mt"]]))
+      updateNumericInput(session, "percent_lower", value = min(obj@meta.data[["percent.mt"]]))
+      values$obj <- obj
+    } else {
+      values$obj <- NULL
+    }
+  }
+
   observe({
     updateUI(!is.null(input$file))
+    updateFilter(!is.null(input$file))
+  })
+
+  # Filter
+  observeEvent(input$filter, {
+    tryCatch(
+      {
+        obj <- subset(values$obj, subset = nFeature_RNA > input$feature_lower & nFeature_RNA < input$feature_upper &
+          nCount_RNA > input$count_lower & nCount_RNA < input$count_upper & percent.mt > input$percent_lower & percent.mt < input$percent_upper)
+        output$filter_violinPlot <- renderPlot(VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0))
+        output$feature_scatter <- renderPlot(create_feature_scatter(obj))
+        values$obj <- obj
+      },
+      error = function(e) {
+        # Error handling
+        showModal(modalDialog(
+          title = "Error",
+          paste("An error has occurred:", e$message),
+          easyClose = TRUE,
+          footer = NULL
+        ))
+      }
+    )
   })
 
   # Normalization
-observeEvent(input$normalize, {
-    tryCatch({
-        withProgress(message = 'Normalization in progress...', value = 0, {
+  observeEvent(input$normalize, {
+    tryCatch(
+      {
+        withProgress(message = "Normalization in progress...", value = 0, {
+          # Add your normalization process here
+          obj <- values$obj
+          if (input$normalization_method == "sctransform") {
+            obj <- SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
+          } else {
+            obj <- NormalizeData(obj, normalization_method = input$normalization_method)
+            obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+            all.genes <- rownames(obj)
+            obj <- ScaleData(obj, features = all.genes)
+          }
 
-            # Add your normalization process here
-            obj <- values$obj
-            obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
-            if(input$normalization_method == "sctransform"){
-                obj <- SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
-            }else{
-                obj <- NormalizeData(obj, normalization_method = input$normalization_method)
-                obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
-                all.genes <- rownames(obj)
-                obj <- ScaleData(obj, features = all.genes)
-            }
+          if ("sctransform" %in% rownames(obj@assays)) {
+            num_pcs <- min(10, ncol(obj))
+            obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs)
+          } else {
+            num_pcs <- min(10, ncol(obj))
+            obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs, verbose = FALSE)
+          }
+          values$obj <- obj
 
-            if ("sctransform" %in% rownames(obj@assays)) {
-                num_pcs <- min(10, ncol(obj))
-                obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs)
-            } else {
-                num_pcs <- min(10, ncol(obj))
-                obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs, verbose = FALSE)
-            }
-            values$obj <- obj
-
-            for (i in 1:10) {
-                Sys.sleep(0.5)  # Simulate some processing time
-                incProgress(0.5, detail = "Normalization complete! Please go to Clustering tab to visualize data")
-            }
+          for (i in 1:10) {
+            Sys.sleep(0.5) # Simulate some processing time
+            incProgress(0.5, detail = "Normalization complete! Please go to Clustering tab to visualize data")
+          }
         })
 
         # Show completion message
@@ -171,16 +230,18 @@ observeEvent(input$normalize, {
         #     easyClose = TRUE,
         #     footer = NULL
         # ))
-    }, error = function(e) {
+      },
+      error = function(e) {
         # Error handling
         showModal(modalDialog(
-            title = "Error",
-            paste("An error has occurred:", e$message),
-            easyClose = TRUE,
-            footer = NULL
+          title = "Error",
+          paste("An error has occurred:", e$message),
+          easyClose = TRUE,
+          footer = NULL
         ))
-    })
-})
+      }
+    )
+  })
 
 
   observeEvent(input$run, {
@@ -206,7 +267,7 @@ observeEvent(input$normalize, {
       output$umap <- renderPlot({
         if (!is.na(pcValue()) && !is.na(resolutionValue())) {
           show_modal_spinner(text = "Preparing plots...")
-          create_metadata_UMAP(obj, pcValue(), resolutionValue(),values)
+          create_metadata_UMAP(obj, pcValue(), resolutionValue(), values)
         } else {
           ggplot() +
             theme_void() +
@@ -216,91 +277,99 @@ observeEvent(input$normalize, {
       })
 
       output$violinPlot <- renderPlot({
-          if (!is.na(pcValue()) && !is.na(resolutionValue()) && !is.null(values$obj)) {
-              values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
-              violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
-              values$violinPlot <- violinPlot
-              violinPlot
-          }
+        if (!is.na(pcValue()) && !is.na(resolutionValue()) && !is.null(values$obj)) {
+          values$obj[["percent.mt"]] <- PercentageFeatureSet(values$obj, pattern = "^MT-")
+          violinPlot <- VlnPlot(values$obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
+          values$violinPlot <- violinPlot
+          violinPlot
+        }
       })
 
+      output$heatmapPlot <- renderPlot(
+        {
+          req(values$obj)
+          # Obtain variable genes
+          variable_genes <- Seurat::VariableFeatures(values$obj)
+          if (is.null(variable_genes) || length(variable_genes) == 0) {
+            stop("Variable features not found or the list is empty.")
+          }
+          # Aggregate expression data for variable genes
+          avg_expression <- AggregateExpression(values$obj, features = variable_genes, return.seurat = TRUE)
+          data_matrix <- GetAssayData(avg_expression, slot = "data")
+          if (!is.matrix(data_matrix) || !is.numeric(data_matrix)) {
+            stop("The data matrix is not numeric.")
+          }
+          # Determine clusters based on the dynamic input
+          cluster_assignments <- Idents(values$obj)
+          # Find all unique cluster IDs
+          all_clusters <- unique(cluster_assignments)
+          all_clusters <- sort(all_clusters)
+          print("all_clusters")
+          print(all_clusters)
+          colnames(data_matrix) <- gsub("^g", "", colnames(data_matrix))
+          print(paste("Unique cluster IDs:", paste(all_clusters, collapse = ", ")))
+          print(paste("Column names in data_matrix:", paste(colnames(data_matrix), collapse = ", ")))
+          # Check that data_matrix is not empty after potential subsetting (if needed)
+          if (ncol(data_matrix) == 0) {
+            stop("The data matrix has no columns.")
+          }
+          # Calculate the standard deviation for each gene and filter out the genes with zero standard deviation
+          non_zero_variance_genes <- apply(data_matrix, 1, var, na.rm = TRUE) > 0
+          data_matrix <- data_matrix[non_zero_variance_genes, ]
+          # Check that data_matrix is not empty after filtering for non-zero variance genes
+          if (nrow(data_matrix) == 0) {
+            stop("No variable genes found with non-zero variance.")
+          }
+
+          # cluster_colors <- grDevices::rainbow(length(all_clusters))
+          set.seed(123)
+          colors <- rainbow(length(all_clusters))
+          names(colors) <- all_clusters
+          cluster_annotation <- data.frame(Cluster = colnames(data_matrix))
+          rownames(cluster_annotation) <- colnames(data_matrix)
+          print("cluster_annotation")
+          print(head(cluster_annotation))
+          annotation_colors <- list(Cluster = colors)
 
 
-      output$heatmapPlot <- renderPlot({
-        req(values$obj)
-        # Obtain variable genes
-        variable_genes <- Seurat::VariableFeatures(values$obj)
-        if (is.null(variable_genes) || length(variable_genes) == 0) {
-          stop("Variable features not found or the list is empty.")
+          # Calculate the correlation matrix on the subsetted data, handling any remaining NAs
+          correlation_matrix <- cor(data_matrix, use = "pairwise.complete.obs")
+
+          print("Inspecting first few rows of correlation_matrix:")
+          print(head(correlation_matrix))
+          # Plot the heatmap
+
+          values$heatmap <- pheatmap(correlation_matrix,
+            clustering_distance_rows = "euclidean",
+            clustering_distance_cols = "euclidean",
+            clustering_method = "complete",
+            color = colorRampPalette(c("yellow", "orange", "red"))(50),
+            annotation_col = cluster_annotation,
+            annotation_colors = annotation_colors
+          )
+
+          values$heatmap
+        },
+        height = function() {
+          350
+        },
+        width = function() {
+          500
         }
-        # Aggregate expression data for variable genes
-        avg_expression <- AggregateExpression(values$obj, features = variable_genes, return.seurat = TRUE)
-        data_matrix <- GetAssayData(avg_expression, slot = "data")
-        if (!is.matrix(data_matrix) || !is.numeric(data_matrix)) {
-          stop("The data matrix is not numeric.")
-        }
-        # Determine clusters based on the dynamic input
-        cluster_assignments <- Idents(values$obj)
-        # Find all unique cluster IDs
-        all_clusters <- unique(cluster_assignments)
-        all_clusters <- sort(all_clusters)
-        print("all_clusters")
-        print(all_clusters)
-        colnames(data_matrix) <- gsub("^g", "", colnames(data_matrix))
-        print(paste("Unique cluster IDs:", paste(all_clusters, collapse = ", ")))
-        print(paste("Column names in data_matrix:", paste(colnames(data_matrix), collapse = ", ")))
-        # Check that data_matrix is not empty after potential subsetting (if needed)
-        if (ncol(data_matrix) == 0) {
-          stop("The data matrix has no columns.")
-        }
-        # Calculate the standard deviation for each gene and filter out the genes with zero standard deviation
-        non_zero_variance_genes <- apply(data_matrix, 1, var, na.rm = TRUE) > 0
-        data_matrix <- data_matrix[non_zero_variance_genes,]
-        # Check that data_matrix is not empty after filtering for non-zero variance genes
-        if (nrow(data_matrix) == 0) {
-          stop("No variable genes found with non-zero variance.")
-        }
-
-        # cluster_colors <- grDevices::rainbow(length(all_clusters))
-        set.seed(123)
-        colors <- rainbow(length(all_clusters))
-        names(colors) <- all_clusters
-        cluster_annotation <- data.frame(Cluster = colnames(data_matrix))
-        rownames(cluster_annotation) <- colnames(data_matrix)
-        print("cluster_annotation")
-        print(head(cluster_annotation))
-        annotation_colors = list(Cluster = colors)
+      )
 
 
-        # Calculate the correlation matrix on the subsetted data, handling any remaining NAs
-        correlation_matrix <- cor(data_matrix, use = "pairwise.complete.obs")
-
-        print("Inspecting first few rows of correlation_matrix:")
-        print(head(correlation_matrix))
-        # Plot the heatmap
-
-        values$heatmap <- pheatmap(correlation_matrix,
-                          clustering_distance_rows = "euclidean",
-                          clustering_distance_cols = "euclidean",
-                          clustering_method = "complete",
-                          color = colorRampPalette(c("yellow", "orange", "red"))(50),
-                          annotation_col = cluster_annotation,
-                          annotation_colors = annotation_colors)
-
-        values$heatmap
-      }, height = function() { 350 }, width = function() { 500 })
-
-
-      output$cluster_cell_counts <- DT::renderDataTable({
-        cluster_ids <- Idents(values$obj)
-        values$cluster_cell_counts <- table(cluster_ids)
-        values$cluster_num <- length(names(values$cluster_cell_counts))
-        data.frame(
-          Cluster = names(values$cluster_cell_counts),
-          # Annotation = values$annotation_show,
-          Count = as.numeric(values$cluster_cell_counts)
-        )
-      },
+      output$cluster_cell_counts <- DT::renderDataTable(
+        {
+          cluster_ids <- Idents(values$obj)
+          values$cluster_cell_counts <- table(cluster_ids)
+          values$cluster_num <- length(names(values$cluster_cell_counts))
+          data.frame(
+            Cluster = names(values$cluster_cell_counts),
+            # Annotation = values$annotation_show,
+            Count = as.numeric(values$cluster_cell_counts)
+          )
+        },
         options = list(paging = FALSE),
         rownames = FALSE
       )
@@ -407,12 +476,12 @@ observeEvent(input$normalize, {
 
       lapply(seq_along(current_saved_list), function(key) {
         output[[paste0("verbatim_output_", key)]] <- DT::renderDataTable(
-        {
-          data.frame(
-            Cluster = names(current_saved_list[[key]]$cluster),
-            Count = as.numeric(current_saved_list[[key]]$cluster)
-          )
-        },
+          {
+            data.frame(
+              Cluster = names(current_saved_list[[key]]$cluster),
+              Count = as.numeric(current_saved_list[[key]]$cluster)
+            )
+          },
           options = list(paging = FALSE),
           rownames = FALSE
         )
@@ -444,12 +513,12 @@ observeEvent(input$normalize, {
                 return("Current #Cells/Cluster")
               })
               output[[paste0("cluster_cell_counts", values$count)]] <- DT::renderDataTable( # nolint
-              {
-                data.frame(
-                  Cluster = names(current_saved_list[[key]]$cluster),
-                  Count = as.numeric(current_saved_list[[key]]$cluster)
-                )
-              },
+                {
+                  data.frame(
+                    Cluster = names(current_saved_list[[key]]$cluster),
+                    Count = as.numeric(current_saved_list[[key]]$cluster)
+                  )
+                },
                 options = list(paging = FALSE),
                 rownames = FALSE
               )
@@ -461,13 +530,13 @@ observeEvent(input$normalize, {
                     column(
                       2,
                       numericInput("pc1", "PC",
-                                   value = current_saved_list[[key]]$pc
+                        value = current_saved_list[[key]]$pc
                       ),
                       numericInput("resolution1", "Resolution",
-                                   value = current_saved_list[[key]]$resolution, step = 0.1
+                        value = current_saved_list[[key]]$resolution, step = 0.1
                       ),
                       selectizeInput("gene1", "Genes",
-                                     choices = current_saved_list[[key]]$gene
+                        choices = current_saved_list[[key]]$gene
                       )
                     ),
                     column(
@@ -483,16 +552,16 @@ observeEvent(input$normalize, {
                         ),
                       ),
                       fluidRow(
-                        column(3, plotOutput(paste0("featurePlot_1", values$count), height = '225px')),
-                        column(3, plotOutput(paste0("featurePlot_2", values$count), height = '225px')),
-                        column(3, plotOutput(paste0("featurePlot_3", values$count), height = '225px')),
-                        column(3, plotOutput(paste0("featurePlot_4", values$count), height = '225px'))
+                        column(3, plotOutput(paste0("featurePlot_1", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("featurePlot_2", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("featurePlot_3", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("featurePlot_4", values$count), height = "225px"))
                       ),
                       fluidRow(
-                        column(3, plotOutput(paste0("violinPlotGene_1", values$count), height = '225px')),
-                        column(3, plotOutput(paste0("violinPlotGene_2", values$count), height = '225px')),
-                        column(3, plotOutput(paste0("violinPlotGene_3", values$count), height = '225px')),
-                        column(3, plotOutput(paste0("violinPlotGene_4", values$count), height = '225px'))
+                        column(3, plotOutput(paste0("violinPlotGene_1", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("violinPlotGene_2", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("violinPlotGene_3", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("violinPlotGene_4", values$count), height = "225px"))
                       ),
                       fluidRow(
                         column(
@@ -503,7 +572,6 @@ observeEvent(input$normalize, {
                           6,
                           plotOutput(paste0("mdsPlot", values$count))
                         )
-
                       ),
                       fluidRow(
                         column(
@@ -578,34 +646,34 @@ observeEvent(input$normalize, {
   # })
 
 
-  #feature plot and violin plot for gene
+  # feature plot and violin plot for gene
   observeEvent(values$genes_1, {
     values$featurePlots[["featurePlot_1"]] <- renderPlot(create_feature_plot(values$obj, values$genes_1, values))
     output$featurePlot_1 <- values$featurePlots[["featurePlot_1"]]
     values$violinPlotGenes[["violinPlotGene_1"]] <- renderPlot(create_violin_plot(values$obj, values$genes_1, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_1 <- values$violinPlotGenes[["violinPlotGene_1"]]
-    values$selected_genes[["genes_1"]] = values$genes_1
+    values$selected_genes[["genes_1"]] <- values$genes_1
   })
   observeEvent(values$genes_2, {
     values$featurePlots[["featurePlot_2"]] <- renderPlot(create_feature_plot(values$obj, values$genes_2, values))
     output$featurePlot_2 <- values$featurePlots[["featurePlot_2"]]
     values$violinPlotGenes[["violinPlotGene_2"]] <- renderPlot(create_violin_plot(values$obj, values$genes_2, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_2 <- values$violinPlotGenes[["violinPlotGene_2"]]
-    values$selected_genes[["genes_2"]] = values$genes_2
+    values$selected_genes[["genes_2"]] <- values$genes_2
   })
   observeEvent(values$genes_3, {
     values$featurePlots[["featurePlot_3"]] <- renderPlot(create_feature_plot(values$obj, values$genes_3, values))
     output$featurePlot_3 <- values$featurePlots[["featurePlot_3"]]
     values$violinPlotGenes[["violinPlotGene_3"]] <- renderPlot(create_violin_plot(values$obj, values$genes_3, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_3 <- values$violinPlotGenes[["violinPlotGene_3"]]
-    values$selected_genes[["genes_3"]] = values$genes_3
+    values$selected_genes[["genes_3"]] <- values$genes_3
   })
   observeEvent(values$genes_4, {
     values$featurePlots[["featurePlot_4"]] <- renderPlot(create_feature_plot(values$obj, values$genes_4, values))
     output$featurePlot_4 <- values$featurePlots[["featurePlot_4"]]
     values$violinPlotGenes[["violinPlotGene_4"]] <- renderPlot(create_violin_plot(values$obj, values$genes_4, values, ncol = NULL, pt.size = 0))
     output$violinPlotGene_4 <- values$violinPlotGenes[["violinPlotGene_4"]]
-    values$selected_genes[["genes_4"]] = values$genes_4
+    values$selected_genes[["genes_4"]] <- values$genes_4
   })
 
   # observeEvent(input$annotate, {
