@@ -25,6 +25,7 @@ ui <- fluidPage(
             column(6, numericInput("percent_upper", "percent.mt", value = NA), style = "padding-right: 5px;"),
             column(6, numericInput("percent_lower", HTML("&nbsp;"), value = NA), style = "padding-left: 5px;")
           ),
+          actionButton("filter_reset", "Reset"),
           actionButton("filter", "Filter"),
           selectInput("normalization_method", "Normalization Methods", c("LogNormalize", "CLR", "RC", "sctransform")),
           actionButton("normalize", "Normalize")
@@ -190,6 +191,11 @@ server <- function(input, output, session) {
         ))
       }
     )
+  })
+
+  # Reset Filter
+  observeEvent(input$filter_reset, {
+    updateFilter(TRUE)
   })
 
   # Normalization
