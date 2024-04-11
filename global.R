@@ -53,6 +53,12 @@ load_seurat_obj <- function(path) {
   return(obj)
 }
 
+create_feature_scatter <- function(obj){
+  plot1 <- FeatureScatter(obj, feature1 = "nCount_RNA", feature2 = "percent.mt")
+  plot2 <- FeatureScatter(obj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+  return (plot1 + plot2)
+}
+
 
 create_metadata_UMAP <- function(obj, pc, resolution, values) {
   tryCatch(
