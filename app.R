@@ -37,7 +37,8 @@ ui <- fluidPage(
             column(7, plotOutput("feature_scatter"))
           ),
           fluidRow(
-            column(5, plotOutput("elbowPlot"))
+            column(5, plotOutput("elbowPlot")),
+            column(7, plotOutput("feature_selection"))
           )
         )
       )
@@ -201,54 +202,72 @@ server <- function(input, output, session) {
     updateFilter(TRUE)
   })
 
-  # Normalization
+  # normalization process
+  normalizeData <- function(obj, method) {
+    if (method == "sctransform") {
+      SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
+    } else {
+      obj <- NormalizeData(obj, normalization_method = method)
+      obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+      all.genes <- rownames(obj)
+      ScaleData(obj, features = all.genes)
+    }
+  }
+
+  # running PCA
+  runPCA <- function(obj) {
+    if ("sctransform" %in% names(obj@assays)) {
+      num_pcs <- min(10, ncol(obj))
+      RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs)
+    } else {
+      num_pcs <- min(10, ncol(obj))
+      RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs, verbose = FALSE)
+    }
+  }
+
+  findVariableFeatures <- function(obj) {
+    obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+    top10 <- head(VariableFeatures(obj), 10)
+    list(object = obj, top10 = top10)
+  }
+
+  plotVariableFeatures <- function(obj, top10) {
+    plot1 <- VariableFeaturePlot(obj)
+    if (length(top10) > 0) {
+      plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+      plot1 + plot2
+    } else {
+      plot1
+    }
+  }
+
   observeEvent(input$normalize, {
     tryCatch(
       {
         withProgress(message = "Normalization in progress...", value = 0, {
-          # Add your normalization process here
           obj <- values$obj
-          if (input$normalization_method == "sctransform") {
-            obj <- SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
-          } else {
-            obj <- NormalizeData(obj, normalization_method = input$normalization_method)
-            obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
-            all.genes <- rownames(obj)
-            obj <- ScaleData(obj, features = all.genes)
-          }
+          obj <- normalizeData(obj, input$normalization_method)
+          obj <- runPCA(obj)
 
-          if ("sctransform" %in% rownames(obj@assays)) {
-            num_pcs <- min(10, ncol(obj))
-            obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs)
-          } else {
-            num_pcs <- min(10, ncol(obj))
-            obj <- RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs, verbose = FALSE)
-          }
+          # Find variable features
+          variableFeatures <- findVariableFeatures(obj)
+          obj <- variableFeatures$object
+          top10 <- variableFeatures$top10
+
           values$obj <- obj
 
-          if (!is.null(values$obj)) {
-            output$elbowPlot <- renderPlot({
-              ElbowPlot(values$obj)  # Call your ElbowPlot function
-            })
-          } else {
-            # Optionally show a message if the data isn't ready
-            showModal(modalDialog(
-              title = "Data Not Ready",
-              "Please perform normalization and PCA before generating the elbow plot.",
-              easyClose = TRUE,
-              footer = NULL
-            ))
-          }
+          output$elbowPlot <- renderPlot(ElbowPlot(obj))
+          output$feature_selection <- renderPlot({
+            plotVariableFeatures(obj, top10)
+          })
 
           for (i in 1:10) {
-            Sys.sleep(0.5) # Simulate some processing time
-            incProgress(1, detail = "Normalization complete! Please go to Clustering tab to visualize data")
+            Sys.sleep(0.5) 
+            incProgress(1/10, detail = "Normalization complete! Please go to Clustering tab to visualize data")
           }
         })
-
       },
       error = function(e) {
-        # Error handling
         showModal(modalDialog(
           title = "Error",
           paste("An error has occurred:", e$message),
@@ -258,6 +277,7 @@ server <- function(input, output, session) {
       }
     )
   })
+
 
 
   observeEvent(input$run, {
