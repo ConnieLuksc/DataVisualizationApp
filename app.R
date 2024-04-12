@@ -35,6 +35,9 @@ ui <- fluidPage(
           fluidRow(
             column(5, plotOutput("filter_violinPlot")),
             column(7, plotOutput("feature_scatter"))
+          ),
+          fluidRow(
+            column(5, plotOutput("elbowPlot"))
           )
         )
       )
@@ -223,19 +226,26 @@ server <- function(input, output, session) {
           }
           values$obj <- obj
 
+          if (!is.null(values$obj)) {
+            output$elbowPlot <- renderPlot({
+              ElbowPlot(values$obj)  # Call your ElbowPlot function
+            })
+          } else {
+            # Optionally show a message if the data isn't ready
+            showModal(modalDialog(
+              title = "Data Not Ready",
+              "Please perform normalization and PCA before generating the elbow plot.",
+              easyClose = TRUE,
+              footer = NULL
+            ))
+          }
+
           for (i in 1:10) {
             Sys.sleep(0.5) # Simulate some processing time
             incProgress(1, detail = "Normalization complete! Please go to Clustering tab to visualize data")
           }
         })
 
-        # Show completion message
-        # showModal(modalDialog(
-        #     title = "Process Complete",
-        #     "Normalization complete! Please go to Clustering tab to visualize data",
-        #     easyClose = TRUE,
-        #     footer = NULL
-        # ))
       },
       error = function(e) {
         # Error handling
