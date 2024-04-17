@@ -140,8 +140,8 @@ create_mds_plot <- function(obj, values) {
 create_annotation_UMAP <- function(obj, pc, resolution, values, annotation) {
   tryCatch(
   {
-    obj1 <- RunUMAP(obj, dims = 1:pc)
-    umap <- DimPlot(obj1,
+    # obj1 <- RunUMAP(obj, dims = 1:pc)
+    umap <- DimPlot(obj,
                     pt.size = .1, label = FALSE,
                     label.size = 4, group.by = annotation,
                     reduction = "umap"
