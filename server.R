@@ -107,17 +107,17 @@ server <- function(input, output, session) {
 
   # running PCA
   runPCA <- function(obj) {
+    num_pcs <- min(input$num_pcs, ncol(obj))
     if ("sctransform" %in% names(obj@assays)) {
-      num_pcs <- min(10, ncol(obj))
       RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs)
     } else {
-      num_pcs <- min(10, ncol(obj))
       RunPCA(obj, features = VariableFeatures(object = obj), npcs = num_pcs, verbose = FALSE)
     }
   }
 
   findVariableFeatures <- function(obj) {
-    obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+    browser()
+    obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = input$num_features)
     top10 <- head(VariableFeatures(obj), 10)
     list(object = obj, top10 = top10)
   }
@@ -133,21 +133,22 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$normalize, {
+    browser() 
     tryCatch(
       {
         withProgress(message = "Normalization in progress...", value = 0, {
           obj <- values$obj
           obj <- normalizeData(obj, input$normalization_method, input$parameter)
           obj <- runPCA(obj)
-
-          # Find variable features
           variableFeatures <- findVariableFeatures(obj)
           obj <- variableFeatures$object
           top10 <- variableFeatures$top10
 
           values$obj <- obj
 
-          output$elbowPlot <- renderPlot(ElbowPlot(obj))
+          output$elbowPlot <- renderPlot({
+                ElbowPlot(obj, ndims = input$num_pcs)
+            })
           output$feature_selection <- renderPlot({
             plotVariableFeatures(obj, top10)
           })
