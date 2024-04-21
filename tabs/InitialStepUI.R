@@ -35,8 +35,8 @@ InitialStepUI <- function() {
           column(7, plotOutput("feature_scatter"))
         ),
         fluidRow(
-          column(5, plotOutput("elbowPlot")),
-          column(7, plotOutput("feature_selection"))
+          column(7, plotOutput("feature_selection")),
+          column(5, plotOutput("elbowPlot"))
         )
       )
     )
