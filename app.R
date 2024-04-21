@@ -28,6 +28,10 @@ ui <- fluidPage(
           actionButton("filter_reset", "Reset"),
           actionButton("filter", "Filter"),
           selectInput("normalization_method", "Normalization Methods", c("LogNormalize", "CLR", "RC", "sctransform")),
+          conditionalPanel(
+            condition = "input.normalization_method == 'LogNormalize' || input.normalization_method == 'RC'",
+            numericInput("parameter", NULL, value = NA)
+          ),
           actionButton("normalize", "Normalize")
         ),
         column(
@@ -180,17 +184,17 @@ server <- function(input, output, session) {
   # Filter
   observeEvent(input$filter, {
     tryCatch(
-    {
-      obj <- subset(values$obj, subset = nFeature_RNA > input$feature_lower &
-        nFeature_RNA < input$feature_upper &
-        nCount_RNA > input$count_lower &
-        nCount_RNA < input$count_upper &
-        percent.mt > input$percent_lower &
-        percent.mt < input$percent_upper)
-      output$filter_violinPlot <- renderPlot(VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0))
-      output$feature_scatter <- renderPlot(create_feature_scatter(obj))
-      values$obj <- obj
-    },
+      {
+        obj <- subset(values$obj, subset = nFeature_RNA > input$feature_lower &
+          nFeature_RNA < input$feature_upper &
+          nCount_RNA > input$count_lower &
+          nCount_RNA < input$count_upper &
+          percent.mt > input$percent_lower &
+          percent.mt < input$percent_upper)
+        output$filter_violinPlot <- renderPlot(VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0))
+        output$feature_scatter <- renderPlot(create_feature_scatter(obj))
+        values$obj <- obj
+      },
       error = function(e) {
         # Error handling
         showModal(modalDialog(
@@ -209,11 +213,15 @@ server <- function(input, output, session) {
   })
 
   # normalization process
-  normalizeData <- function(obj, method) {
+  normalizeData <- function(obj, method, parameter = NULL) {
     if (method == "sctransform") {
       SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
     } else {
-      obj <- NormalizeData(obj, normalization_method = method)
+      if ((method == "LogNormalize" || method == "RC") && !is.null(parameter)) {
+        obj <- NormalizeData(obj, normalization_method = method, scale.factor = parameter)
+      } else {
+        obj <- NormalizeData(obj, normalization_method = method)
+      }
       obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
       all.genes <- rownames(obj)
       ScaleData(obj, features = all.genes)
@@ -249,30 +257,30 @@ server <- function(input, output, session) {
 
   observeEvent(input$normalize, {
     tryCatch(
-    {
-      withProgress(message = "Normalization in progress...", value = 0, {
-        obj <- values$obj
-        obj <- normalizeData(obj, input$normalization_method)
-        obj <- runPCA(obj)
+      {
+        withProgress(message = "Normalization in progress...", value = 0, {
+          obj <- values$obj
+          obj <- normalizeData(obj, input$normalization_method, input$parameter)
+          obj <- runPCA(obj)
 
-        # Find variable features
-        variableFeatures <- findVariableFeatures(obj)
-        obj <- variableFeatures$object
-        top10 <- variableFeatures$top10
+          # Find variable features
+          variableFeatures <- findVariableFeatures(obj)
+          obj <- variableFeatures$object
+          top10 <- variableFeatures$top10
 
-        values$obj <- obj
+          values$obj <- obj
 
-        output$elbowPlot <- renderPlot(ElbowPlot(obj))
-        output$feature_selection <- renderPlot({
-          plotVariableFeatures(obj, top10)
+          output$elbowPlot <- renderPlot(ElbowPlot(obj))
+          output$feature_selection <- renderPlot({
+            plotVariableFeatures(obj, top10)
+          })
+
+          for (i in 1:10) {
+            Sys.sleep(0.5)
+            incProgress(1 / 10, detail = "Normalization complete! Please go to Clustering tab to visualize data")
+          }
         })
-
-        for (i in 1:10) {
-          Sys.sleep(0.5)
-          incProgress(1 / 10, detail = "Normalization complete! Please go to Clustering tab to visualize data")
-        }
-      })
-    },
+      },
       error = function(e) {
         showModal(modalDialog(
           title = "Error",
@@ -329,70 +337,70 @@ server <- function(input, output, session) {
       })
 
       output$heatmapPlot <- renderPlot(
-      {
-        req(values$obj)
-        # Obtain variable genes
-        variable_genes <- Seurat::VariableFeatures(values$obj)
-        if (is.null(variable_genes) || length(variable_genes) == 0) {
-          stop("Variable features not found or the list is empty.")
-        }
-        # Aggregate expression data for variable genes
-        avg_expression <- AggregateExpression(values$obj, features = variable_genes, return.seurat = TRUE)
-        data_matrix <- GetAssayData(avg_expression, slot = "data")
-        if (!is.matrix(data_matrix) || !is.numeric(data_matrix)) {
-          stop("The data matrix is not numeric.")
-        }
-        # Determine clusters based on the dynamic input
-        cluster_assignments <- Idents(values$obj)
-        # Find all unique cluster IDs
-        all_clusters <- unique(cluster_assignments)
-        all_clusters <- sort(all_clusters)
-        print("all_clusters")
-        print(all_clusters)
-        colnames(data_matrix) <- gsub("^g", "", colnames(data_matrix))
-        print(paste("Unique cluster IDs:", paste(all_clusters, collapse = ", ")))
-        print(paste("Column names in data_matrix:", paste(colnames(data_matrix), collapse = ", ")))
-        # Check that data_matrix is not empty after potential subsetting (if needed)
-        if (ncol(data_matrix) == 0) {
-          stop("The data matrix has no columns.")
-        }
-        # Calculate the standard deviation for each gene and filter out the genes with zero standard deviation
-        non_zero_variance_genes <- apply(data_matrix, 1, var, na.rm = TRUE) > 0
-        data_matrix <- data_matrix[non_zero_variance_genes,]
-        # Check that data_matrix is not empty after filtering for non-zero variance genes
-        if (nrow(data_matrix) == 0) {
-          stop("No variable genes found with non-zero variance.")
-        }
+        {
+          req(values$obj)
+          # Obtain variable genes
+          variable_genes <- Seurat::VariableFeatures(values$obj)
+          if (is.null(variable_genes) || length(variable_genes) == 0) {
+            stop("Variable features not found or the list is empty.")
+          }
+          # Aggregate expression data for variable genes
+          avg_expression <- AggregateExpression(values$obj, features = variable_genes, return.seurat = TRUE)
+          data_matrix <- GetAssayData(avg_expression, slot = "data")
+          if (!is.matrix(data_matrix) || !is.numeric(data_matrix)) {
+            stop("The data matrix is not numeric.")
+          }
+          # Determine clusters based on the dynamic input
+          cluster_assignments <- Idents(values$obj)
+          # Find all unique cluster IDs
+          all_clusters <- unique(cluster_assignments)
+          all_clusters <- sort(all_clusters)
+          print("all_clusters")
+          print(all_clusters)
+          colnames(data_matrix) <- gsub("^g", "", colnames(data_matrix))
+          print(paste("Unique cluster IDs:", paste(all_clusters, collapse = ", ")))
+          print(paste("Column names in data_matrix:", paste(colnames(data_matrix), collapse = ", ")))
+          # Check that data_matrix is not empty after potential subsetting (if needed)
+          if (ncol(data_matrix) == 0) {
+            stop("The data matrix has no columns.")
+          }
+          # Calculate the standard deviation for each gene and filter out the genes with zero standard deviation
+          non_zero_variance_genes <- apply(data_matrix, 1, var, na.rm = TRUE) > 0
+          data_matrix <- data_matrix[non_zero_variance_genes, ]
+          # Check that data_matrix is not empty after filtering for non-zero variance genes
+          if (nrow(data_matrix) == 0) {
+            stop("No variable genes found with non-zero variance.")
+          }
 
-        # cluster_colors <- grDevices::rainbow(length(all_clusters))
-        set.seed(123)
-        colors <- rainbow(length(all_clusters))
-        names(colors) <- all_clusters
-        cluster_annotation <- data.frame(Cluster = colnames(data_matrix))
-        rownames(cluster_annotation) <- colnames(data_matrix)
-        print("cluster_annotation")
-        print(head(cluster_annotation))
-        annotation_colors <- list(Cluster = colors)
+          # cluster_colors <- grDevices::rainbow(length(all_clusters))
+          set.seed(123)
+          colors <- rainbow(length(all_clusters))
+          names(colors) <- all_clusters
+          cluster_annotation <- data.frame(Cluster = colnames(data_matrix))
+          rownames(cluster_annotation) <- colnames(data_matrix)
+          print("cluster_annotation")
+          print(head(cluster_annotation))
+          annotation_colors <- list(Cluster = colors)
 
 
-        # Calculate the correlation matrix on the subsetted data, handling any remaining NAs
-        correlation_matrix <- cor(data_matrix, use = "pairwise.complete.obs")
+          # Calculate the correlation matrix on the subsetted data, handling any remaining NAs
+          correlation_matrix <- cor(data_matrix, use = "pairwise.complete.obs")
 
-        print("Inspecting first few rows of correlation_matrix:")
-        print(head(correlation_matrix))
-        # Plot the heatmap
+          print("Inspecting first few rows of correlation_matrix:")
+          print(head(correlation_matrix))
+          # Plot the heatmap
 
-        values$heatmap <- pheatmap(correlation_matrix,
-                                   clustering_distance_rows = "euclidean",
-                                   clustering_distance_cols = "euclidean",
-                                   clustering_method = "complete",
-                                   color = colorRampPalette(c("yellow", "orange", "red"))(50),
-                                   annotation_col = cluster_annotation,
-                                   annotation_colors = annotation_colors
-        )
+          values$heatmap <- pheatmap(correlation_matrix,
+            clustering_distance_rows = "euclidean",
+            clustering_distance_cols = "euclidean",
+            clustering_method = "complete",
+            color = colorRampPalette(c("yellow", "orange", "red"))(50),
+            annotation_col = cluster_annotation,
+            annotation_colors = annotation_colors
+          )
 
-        values$heatmap
-      },
+          values$heatmap
+        },
         height = function() {
           350
         },
@@ -403,16 +411,16 @@ server <- function(input, output, session) {
 
 
       output$cluster_cell_counts <- DT::renderDataTable(
-      {
-        cluster_ids <- Idents(values$obj)
-        values$cluster_cell_counts <- table(cluster_ids)
-        values$cluster_num <- length(names(values$cluster_cell_counts))
-        data.frame(
-          Cluster = names(values$cluster_cell_counts),
-          # Annotation = values$annotation_show,
-          Count = as.numeric(values$cluster_cell_counts)
-        )
-      },
+        {
+          cluster_ids <- Idents(values$obj)
+          values$cluster_cell_counts <- table(cluster_ids)
+          values$cluster_num <- length(names(values$cluster_cell_counts))
+          data.frame(
+            Cluster = names(values$cluster_cell_counts),
+            # Annotation = values$annotation_show,
+            Count = as.numeric(values$cluster_cell_counts)
+          )
+        },
         options = list(paging = FALSE),
         rownames = FALSE
       )
@@ -519,12 +527,12 @@ server <- function(input, output, session) {
 
       lapply(seq_along(current_saved_list), function(key) {
         output[[paste0("verbatim_output_", key)]] <- DT::renderDataTable(
-        {
-          data.frame(
-            Cluster = names(current_saved_list[[key]]$cluster),
-            Count = as.numeric(current_saved_list[[key]]$cluster)
-          )
-        },
+          {
+            data.frame(
+              Cluster = names(current_saved_list[[key]]$cluster),
+              Count = as.numeric(current_saved_list[[key]]$cluster)
+            )
+          },
           options = list(paging = FALSE),
           rownames = FALSE
         )
@@ -556,12 +564,12 @@ server <- function(input, output, session) {
                 return("Current #Cells/Cluster")
               })
               output[[paste0("cluster_cell_counts", values$count)]] <- DT::renderDataTable( # nolint
-              {
-                data.frame(
-                  Cluster = names(current_saved_list[[key]]$cluster),
-                  Count = as.numeric(current_saved_list[[key]]$cluster)
-                )
-              },
+                {
+                  data.frame(
+                    Cluster = names(current_saved_list[[key]]$cluster),
+                    Count = as.numeric(current_saved_list[[key]]$cluster)
+                  )
+                },
                 options = list(paging = FALSE),
                 rownames = FALSE
               )
@@ -573,13 +581,13 @@ server <- function(input, output, session) {
                     column(
                       2,
                       numericInput("pc1", "PC",
-                                   value = current_saved_list[[key]]$pc
+                        value = current_saved_list[[key]]$pc
                       ),
                       numericInput("resolution1", "Resolution",
-                                   value = current_saved_list[[key]]$resolution, step = 0.1
+                        value = current_saved_list[[key]]$resolution, step = 0.1
                       ),
                       selectizeInput("gene1", "Genes",
-                                     choices = current_saved_list[[key]]$gene
+                        choices = current_saved_list[[key]]$gene
                       )
                     ),
                     column(
@@ -675,11 +683,10 @@ server <- function(input, output, session) {
           selected_columns <- c(selected_columns, column)
         }
       }
-      print('TEST!!!!')
+      print("TEST!!!!")
       updateSelectizeInput(session, "annotation_column", choices = selected_columns)
     }
-  }
-  )
+  })
 
   observeEvent(input$save, {
     ignore_button_clicked <<- TRUE
