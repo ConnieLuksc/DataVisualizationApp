@@ -217,7 +217,7 @@ server <- function(input, output, session) {
     if (method == "sctransform") {
       SCTransform(obj, vars.to.regress = "percent.mt", verbose = FALSE)
     } else {
-      if ((method == "LogNormalize" || method == "RC") && !is.null(parameter)) {
+      if ((method == "LogNormalize" || method == "RC") && !is.na(parameter)) {
         obj <- NormalizeData(obj, normalization_method = method, scale.factor = parameter)
       } else {
         obj <- NormalizeData(obj, normalization_method = method)
