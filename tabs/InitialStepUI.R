@@ -1,4 +1,3 @@
-
 InitialStepUI <- function() {
   tabPanel(
     "Initial Step",
@@ -24,7 +23,7 @@ InitialStepUI <- function() {
         selectInput("normalization_method", "Normalization Methods", c("LogNormalize", "CLR", "RC", "sctransform")),
         conditionalPanel(
           condition = "input.normalization_method == 'LogNormalize' || input.normalization_method == 'RC'",
-          numericInput("parameter", NULL, value = NA)
+          numericInput("parameter", "Normalization Parameter", value = NA)
         ),
         numericInput("num_pcs", "PC value:", value = 30, min = 1, max = 100, step = 1),
         numericInput("num_features", "Number of Variable Features:", value = 2000, min = 100, max = 5000, step = 100),
