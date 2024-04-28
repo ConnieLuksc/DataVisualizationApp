@@ -616,6 +616,8 @@ server <- function(input, output, session) {
     filename = function() {"plots_initial.pdf"},
     content = function(file) {
       pdf(file, onefile = TRUE, width = 15, height = 9)
+      # plot.new()
+      # text(0.5, 0.5, "Test message", col = "blue", cex = 1.5)
       print(values$filter_violinPlot) 
       print(values$feature_scatter) 
       print(values$elbowPlot) 
