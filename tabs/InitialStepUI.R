@@ -32,7 +32,10 @@ InitialStepUI <- function() {
       column(
         10,
         fluidRow(
-          column(5, plotOutput("filter_violinPlot")),
+          column(5, 
+          plotOutput("filter_violinPlot"),
+          hidden(div(id = "download_wrapper", downloadButton("download_violin_plot", "Download Violin Plot")))
+          ),
           column(7, plotOutput("feature_scatter"))
         ),
         fluidRow(

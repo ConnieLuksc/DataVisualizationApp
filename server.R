@@ -41,6 +41,7 @@ server <- function(input, output, session) {
       obj <- load_seurat_obj(input$file$datapath)
       obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
       output$filter_violinPlot <- renderPlot(VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0))
+      shinyjs::show("download_wrapper") 
       output$feature_scatter <- renderPlot(create_feature_scatter(obj))
       updateNumericInput(session, "feature_upper", value = max(obj@meta.data[["nFeature_RNA"]]))
       updateNumericInput(session, "feature_lower", value = min(obj@meta.data[["nFeature_RNA"]]))
@@ -58,6 +59,18 @@ server <- function(input, output, session) {
     updateUI(!is.null(input$file))
     updateFilter(!is.null(input$file))
   })
+
+  output$download_violin_plot <- downloadHandler(
+    filename = function() {
+      paste0("violin_plot_", Sys.Date(), ".pdf")
+    },
+    content = function(file) {
+      current_obj <- values$obj
+      violin_plot <- VlnPlot(object = current_obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
+      ggsave(filename = file, plot = violin_plot, device = "pdf", height = 8.5, width = 11)
+    }
+  )
+
 
   # Filter
   observeEvent(input$filter, {
