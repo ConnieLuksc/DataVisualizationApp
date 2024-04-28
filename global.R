@@ -22,6 +22,8 @@ library(networkD3)
 library(edgeR)
 library(stringr)
 library(sctransform)
+library(gridExtra)
+library(grid)
 
 # set.seed(123)
 # Read in file and perform validation.
