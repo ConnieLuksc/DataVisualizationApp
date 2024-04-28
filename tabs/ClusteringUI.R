@@ -21,7 +21,8 @@ ClusteringUI <- function() {
           # selectizeInput("gene", "Genes", choices = NULL),
           # actionButton("annotate", "Annotate"),
           actionButton("save", "Save", class = "save-btn"),
-          actionButton("update", "Update", class = "update-btn")
+          actionButton("update", "Update", class = "update-btn"),
+          downloadButton("downloadData", "Download PDF")
         ),
         column(
           8,

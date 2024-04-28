@@ -610,6 +610,48 @@ server <- function(input, output, session) {
     values$saved_list[[new_index]] <- saved_list_tmp
   })
 
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste("complete-saved-data-", Sys.Date(), ".pdf", sep = "")
+    },
+    content = function(file) {
+      pdf(file, width = 11, height = 8.5)  # Adjust dimensions as needed
+
+      lapply(names(values$saved_list), function(name) {
+        item <- values$saved_list[[name]]
+        plot.new()
+        title(main = paste("Data for", name), cex.main = 1.5)
+
+        # Iterate over each element within the item
+        lapply(names(item), function(sub_item_name) {
+          sub_item <- item[[sub_item_name]]
+          # Check if the item is a plot
+          if (is(sub_item, "ggplot") || is(sub_item, "trellis")) {
+            print(sub_item)
+          } else if (is(sub_item, "data.frame") || is(sub_item, "matrix")) {
+            # Display data frames or matrices as tables
+            plot.new()
+            title(main = paste(sub_item_name, "Data Table"), cex.main = 1)
+            print(caption = sub_item_name)
+            print(xtable(sub_item), type = "text")  # using xtable for better formatting
+          } else if (is.character(sub_item) || is.vector(sub_item)) {
+            # Handle textual data or vectors
+            plot.new()
+            title(main = paste(sub_item_name, "Text Data"), cex.main = 1)
+            text(0.5, 0.5, labels = paste(sub_item, collapse = "\n"), cex = 0.8)
+          } else {
+            # Fallback for other types, possibly list or others
+            plot.new()
+            title(main = paste(sub_item_name, "Complex Data"), cex.main = 1)
+            text(0.5, 0.5, labels = paste("Data type not directly displayable", collapse = "\n"), cex = 0.8)
+          }
+        })
+      })
+      
+      dev.off()
+    }
+  )
+
   # choose annotation colum from meta data
   # observeEvent(input$annotation_column, {
   #   # print(input$annotation_column)
