@@ -464,7 +464,9 @@ server <- function(input, output, session) {
               output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
               output[[paste0("heatmapPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$heatmap)
               output[[paste0("mdsPlot", values$count)]] <- renderPlot(plot(current_saved_list[[key]]$plotmds))
+              print("TEST!!!!!!")
               print(current_saved_list[[key]]$plotmds)
+              print(current_saved_list)
               output[[paste0("umap_annotation", values$count)]] <- renderPlot(current_saved_list[[key]]$annotation_umap) # nolint
               output[[paste0("textoutput", values$count)]] <- renderText({
                 return("Current #Cells/Cluster")

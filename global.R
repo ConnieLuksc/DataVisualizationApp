@@ -135,6 +135,8 @@ create_mds_plot <- function(obj, values) {
   legend("topright", legend = colnames(all_genes$RNA), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
   title("MDS Plot")
   values$mds <- mdsPlot
+  print("TEST11111")
+  print(values$mds)
   return (mdsPlot)
 }
 
