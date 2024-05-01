@@ -134,9 +134,9 @@ create_mds_plot <- function(obj, values) {
   mdsPlot <- plotMDS(dge_data, col = colors, pch=20, cex=2)
   legend("topright", legend = colnames(all_genes$RNA), col = colors, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
   title("MDS Plot")
-  values$mds <- mdsPlot
-  print("TEST11111")
-  print(values$mds)
+  values$mds <- dge_data
+  values$mds_legend <- all_genes$RNA
+  values$mds_color <- colors
   return (mdsPlot)
 }
 

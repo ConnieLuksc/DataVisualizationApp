@@ -463,10 +463,12 @@ server <- function(input, output, session) {
               output[[paste0("violinPlotGene_4", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_4) # nolint
               output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
               output[[paste0("heatmapPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$heatmap)
-              output[[paste0("mdsPlot", values$count)]] <- renderPlot(plot(current_saved_list[[key]]$plotmds))
-              print("TEST!!!!!!")
-              print(current_saved_list[[key]]$plotmds)
-              print(current_saved_list)
+              output[[paste0("mdsPlot", values$count)]] <- renderPlot({
+                plotMDS(current_saved_list[[key]]$plotmds, col = c("red", "green", "blue", "yellow"), pch=20, cex=2)
+                title("MDS Plot")
+                legend("topright", legend = colnames(current_saved_list[[key]]$mds_legend), col = current_saved_list[[key]]$mds_color, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
+              })
+
               output[[paste0("umap_annotation", values$count)]] <- renderPlot(current_saved_list[[key]]$annotation_umap) # nolint
               output[[paste0("textoutput", values$count)]] <- renderText({
                 return("Current #Cells/Cluster")
@@ -591,7 +593,6 @@ server <- function(input, output, session) {
           selected_columns <- c(selected_columns, column)
         }
       }
-      print("TEST!!!!")
       updateSelectizeInput(session, "annotation_column", choices = selected_columns)
     }
   })
@@ -611,7 +612,7 @@ server <- function(input, output, session) {
       featurePlot_3 = values$featurePlots[["featurePlot_3"]], violinPlotGene_3 = values$violinPlotGenes[["violinPlotGene_3"]],
       featurePlot_4 = values$featurePlots[["featurePlot_4"]], violinPlotGene_4 = values$violinPlotGenes[["violinPlotGene_4"]],
       geneViolin = values$violin, annotation_umap = values$umap_annotation,
-      sankey = values$sankey, plotmds = values$mds,
+      sankey = values$sankey, plotmds = values$mds, mds_legend = values$mds_legend, mds_color = values$mds_color,
       gene_1 = values$genes[["gene_1"]], gene_2 = values$genes[["gene_2"]],
       gene_3 = values$genes[["gene_3"]], gene_4 = values$genes[["gene_4"]]
     )
