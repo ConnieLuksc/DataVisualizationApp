@@ -464,7 +464,7 @@ server <- function(input, output, session) {
               output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
               output[[paste0("heatmapPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$heatmap)
               output[[paste0("mdsPlot", values$count)]] <- renderPlot({
-                plotMDS(current_saved_list[[key]]$plotmds, col = c("red", "green", "blue", "yellow"), pch=20, cex=2)
+                plotMDS(current_saved_list[[key]]$plotmds, col = current_saved_list[[key]]$mds_color, pch=20, cex=2)
                 title("MDS Plot")
                 legend("topright", legend = colnames(current_saved_list[[key]]$mds_legend), col = current_saved_list[[key]]$mds_color, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
               })
