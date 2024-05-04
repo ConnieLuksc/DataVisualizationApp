@@ -74,6 +74,7 @@ create_metadata_UMAP <- function(obj, pc, resolution, values) {
     remove_modal_spinner()
     values$obj <- obj
     values$umap <- umap
+    values$umapped_obj <- obj
     return(umap)
   },
     error = function(err) {
