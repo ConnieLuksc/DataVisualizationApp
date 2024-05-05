@@ -133,13 +133,7 @@ server <- function(input, output, session) {
   }
 
   plotVariableFeatures <- function(obj, top10) {
-    plot1 <- VariableFeaturePlot(obj)
-    if (length(top10) > 0) {
-      plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
-      plot1 + plot2
-    } else {
-      plot1
-    }
+    plot2 <- LabelPoints(plot = VariableFeaturePlot(obj), points = top10, repel = TRUE)
   }
 
   observeEvent(input$normalize, {
@@ -668,8 +662,6 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       pdf(file, onefile = TRUE, width = 15, height = 9)
-      # plot.new()
-      # text(0.5, 0.5, "Test message", col = "blue", cex = 1.5)
       print(values$filter_violinPlot)
       print(values$feature_scatter)
       print(values$elbowPlot)
@@ -698,42 +690,6 @@ server <- function(input, output, session) {
       print(values$violinPlotGenes[["violinPlotGene_3"]])
       print(values$featurePlots[["featurePlot_4"]])
       print(values$violinPlotGenes[["violinPlotGene_4"]])
-      # all_elements <- list(
-      #   values$violinPlot,
-      #   values$umap,
-      #   values$umap_annotation,
-      #   values$sankey,
-      #   values$mds,
-      #   values$heatmap
-      #   values$violinPlot,
-      #   values$umap,
-      #   values$featurePlots[["featurePlot_1"]],
-      #   values$featurePlots[["featurePlot_2"]],
-      #   values$featurePlots[["featurePlot_3"]],
-      #   values$featurePlots[["featurePlot_4"]],
-      #   values$violinPlotGenes[["violinPlotGene_1"]],
-      #   values$violinPlotGenes[["violinPlotGene_2"]],
-      #   values$violinPlotGenes[["violinPlotGene_3"]],
-      #   values$violinPlotGenes[["violinPlotGene_4"]],
-      #   values$umap_annotation,
-      #   values$sankey,
-      #   values$mds,
-      #   values$heatmap,
-      #   values$genes[["gene_1"]],
-      #   values$genes[["gene_2"]],
-      #   values$genes[["gene_3"]],
-      #   values$genes[["gene_4"]]
-      # )
-
-      # all_elements <- lapply(all_elements, function(x) if (!is.null(x) && !is.grob(x)) tryCatch(ggplotGrob(x), error=function(e) NULL) else x)
-      # all_elements <- Filter(is.grob, all_elements)
-
-      # num_elements <- length(all_elements)
-      # nrow <- ceiling(sqrt(num_elements))
-      # ncol <- ifelse(nrow * nrow >= num_elements, nrow, nrow + 1)
-
-      # grid.arrange(grobs = all_elements, nrow = nrow, ncol = ncol)
-
       dev.off()
     }
   )
