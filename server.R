@@ -656,19 +656,57 @@ server <- function(input, output, session) {
     values$saved_list[[new_index]] <- saved_list_tmp
   })
 
+  # output$download_initial <- downloadHandler(
+  #   filename = function() {
+  #     "plots_initial.pdf"
+  #   },
+  #   content = function(file) {
+  #     pdf(file, onefile = TRUE, width = 15, height = 9)
+  #     print(values$filter_violinPlot)
+  #     print(values$feature_scatter)
+  #     print(values$elbowPlot)
+  #     print(values$feature_selection)
+  #     dev.off()
+  #   }
+  # )
+  plots <- reactiveValues()
   output$download_initial <- downloadHandler(
     filename = function() {
-      "plots_initial.pdf"
+      paste("plots_initial_", Sys.Date(), ".pdf", sep = "")
     },
     content = function(file) {
       pdf(file, onefile = TRUE, width = 15, height = 9)
-      print(values$filter_violinPlot)
-      print(values$feature_scatter)
-      print(values$elbowPlot)
-      print(values$feature_selection)
+      line1 <- sprintf("nFeature RNA: %d - %d", input$feature_lower, input$feature_upper)
+      line2 <- sprintf("nCount RNA: %d - %d", input$count_lower, input$count_upper)
+      line3 <- sprintf("Percent mt: %.2f - %.2f", input$percent_lower, input$percent_upper)
+      plots$filter_violinPlot <- values$filter_violinPlot + 
+        theme(plot.margin = unit(c(2, 2, 2, 2), "cm"))
+      print(plots$filter_violinPlot)
+      grid.text(line1, x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
+      grid.text(line2, x = 0.5, y = 0.03, just = "bottom", gp = gpar(fontsize = 15))
+      grid.text(line3, x = 0.5, y = 0.01, just = "bottom", gp = gpar(fontsize = 15))
+      
+      plots$feature_scatter <- values$feature_scatter + 
+        theme(plot.margin = unit(c(2, 2, 2, 2), "cm"))
+      print(plots$feature_scatter)
+      grid.text(line1, x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
+      grid.text(line2, x = 0.5, y = 0.03, just = "bottom", gp = gpar(fontsize = 15))
+      grid.text(line3, x = 0.5, y = 0.01, just = "bottom", gp = gpar(fontsize = 15))
+    
+      plots$elbowPlot <- values$elbowPlot + 
+        theme(plot.margin = unit(c(2, 2, 2, 2), "cm"))
+      print(plots$elbowPlot)
+      grid.text(paste("PC value: ", input$num_pcs), x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
+
+      plots$feature_selection <- values$feature_selection + 
+        theme(plot.margin = unit(c(2, 2, 2, 2), "cm"))
+      print(plots$feature_selection)
+      grid.text(paste("Number of Variable Features:", input$num_features), x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
+      
       dev.off()
     }
   )
+
 
 
   output$download_clustering <- downloadHandler(
