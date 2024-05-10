@@ -1,4 +1,5 @@
-source("global.R")
+source("functions/ClusteringFunc.R")
+source("functions/InitialStepFunc.R")
 source("tabs/ClusteringUI.R")
 source("tabs/InitialStepUI.R")
 
@@ -9,6 +10,5 @@ ui <- fluidPage(
     id = "main_tabs",
     InitialStepUI(),
     ClusteringUI()
-    
   )
 )
