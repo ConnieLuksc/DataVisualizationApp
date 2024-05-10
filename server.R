@@ -458,6 +458,10 @@ server <- function(input, output, session) {
               output[[paste0("gene4", values$count)]] <- renderText({
                 paste("Gene4: ", values$gene_4)
               })
+              values$annotations <- current_saved_list[[key]]$annotation
+              output[[paste0("annotation1", values$count)]] <- renderText({
+                paste("Annotation: ", values$annotations)
+              })
               output[[paste0("umap", values$count)]] <- renderPlot(current_saved_list[[key]]$umap) # nolint
               output[[paste0("violinPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$violin) # nolint
               output[[paste0("featurePlot_1", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_1) # nolint
@@ -505,7 +509,8 @@ server <- function(input, output, session) {
                       verbatimTextOutput(paste0("gene1", values$count)),
                       verbatimTextOutput(paste0("gene2", values$count)),
                       verbatimTextOutput(paste0("gene3", values$count)),
-                      verbatimTextOutput(paste0("gene4", values$count))
+                      verbatimTextOutput(paste0("gene4", values$count)),
+                      verbatimTextOutput(paste0("annotation1", values$count))
                     ),
                     column(
                       8,
@@ -588,6 +593,7 @@ server <- function(input, output, session) {
     values$gene_3 <- input$genes_3
     values$genes_4 <- input$genes_4
     values$gene_4 <- input$genes_4
+
     if (pcValue() != input$pc || resolutionValue() != input$resolution) {
       output$featurePlot_1 <- renderPlot(create_feature_plot(values$obj, values$genes_1, values))
       output$featurePlot_2 <- renderPlot(create_feature_plot(values$obj, values$genes_2, values))
@@ -615,10 +621,18 @@ server <- function(input, output, session) {
         local({
           current_saved_list <- values$saved_list
           umapped_obj <- current_saved_list[[i - 1]]$umapped_obj
+          pc <- current_saved_list[[i - 1]]$pc
+          resolution <- current_saved_list[[i - 1]]$resolution
           create_plot_output(i, 1, umapped_obj, values$gene_1)
           create_plot_output(i, 2, umapped_obj, values$gene_2)
           create_plot_output(i, 3, umapped_obj, values$gene_3)
           create_plot_output(i, 4, umapped_obj, values$gene_4)
+          output[[paste0("umap_annotation", i)]] <- renderPlot({
+            create_annotation_UMAP(umapped_obj, pc, resolution, values, values$annotations)
+          })
+          output[[paste0("sankeyPlot", i)]] <- renderUI({
+            create_sankey_plot(umapped_obj, values, pc, resolution, values$annotations, values$cluster_cell_counts)
+          })
         })
       }
     }
@@ -647,7 +661,7 @@ server <- function(input, output, session) {
     new_index <- paste0("item", length(values$saved_list) + 1)
     saved_list_tmp <- list(
       file = input$file$datapath, pc = pcValue(), umapped_obj = values$umapped_obj,
-      resolution = resolutionValue(), gene = input$gene,
+      resolution = resolutionValue(), gene = input$gene, annotation = values$annotations,
       cluster = values$cluster_cell_counts, umap = values$umap,
       violin = values$violinPlot, heatmap = values$heatmap,
       featurePlot_1 = values$featurePlots[["featurePlot_1"]], violinPlotGene_1 = values$violinPlotGenes[["violinPlotGene_1"]],
