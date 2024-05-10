@@ -22,7 +22,12 @@ ClusteringUI <- function() {
           # actionButton("annotate", "Annotate"),
           actionButton("save", "Save", class = "save-btn"),
           actionButton("update", "Update", class = "update-btn"),
-          downloadButton("download_clustering", "Download")
+          downloadButton("download_clustering", "Download"),
+          verbatimTextOutput("normalization"),
+          verbatimTextOutput("normalization_parameter"),
+          verbatimTextOutput("PC_value"),
+          verbatimTextOutput("Number_of_Variable_Features")
+
         ),
         column(
           8,
