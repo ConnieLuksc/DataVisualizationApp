@@ -30,6 +30,8 @@ server <- function(input, output, session) {
   updateFilter <- function(enable = TRUE) {
     if (enable) {
       obj <- load_seurat_obj(input$file$datapath)
+      obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day0_BMC_STIA_Macs"]] <- NULL
+      obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day7_BMC_STIA_Macs"]] <- NULL
       obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
       values$filter_violinPlot <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
       output$filter_violinPlot <- renderPlot(values$filter_violinPlot)
@@ -91,7 +93,7 @@ server <- function(input, output, session) {
       {
         withProgress(message = "Normalization in progress...", value = 0, {
           obj <- values$obj
-          obj <- normalizeData(obj, input$normalization_method, input$parameter)
+          obj <- normalizeData(obj, input$normalization_method, input$using_log, input$norm_parameter, input$sct_parameter)
           obj <- runPCA(obj, input$num_pcs)
           variableFeatures <- findVariableFeatures(obj, input$num_features)
           obj <- variableFeatures$object
