@@ -145,10 +145,14 @@ server <- function(input, output, session) {
       ))
       shinyjs::enable("run")
     } else {
+      if (!is.na(pcValue()) && !is.na(resolutionValue())) {
+        show_modal_spinner(text = "Preparing plots...")
+        run_umap(obj, pcValue(), resolutionValue(), values)
+      }
+
       output$umap <- renderPlot({
-        if (!is.na(pcValue()) && !is.na(resolutionValue())) {
-          show_modal_spinner(text = "Preparing plots...")
-          create_metadata_UMAP(obj, pcValue(), resolutionValue(), values)
+        if (!is.na(pcValue()) && !is.na(resolutionValue()) && !is.null(values$obj)) {
+          create_metadata_UMAP(values$obj, values)
         } else {
           ggplot() +
             theme_void() +
@@ -204,7 +208,6 @@ server <- function(input, output, session) {
           values$cluster_num <- length(names(values$cluster_cell_counts))
           data.frame(
             Cluster = names(values$cluster_cell_counts),
-            # Annotation = values$annotation_show,
             Count = as.numeric(values$cluster_cell_counts)
           )
         },
@@ -250,6 +253,7 @@ server <- function(input, output, session) {
       shinyjs::enable("update")
     }
   })
+
 
   # Clear all sidebar inputs when 'Reset' button is clicked
   observeEvent(input$reset, {

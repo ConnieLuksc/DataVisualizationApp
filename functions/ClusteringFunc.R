@@ -75,20 +75,22 @@ create_feature_scatter <- function(obj) {
   return(plot1 + plot2)
 }
 
+run_umap <- function(obj, pc, resolution, values) {
+  obj <- FindNeighbors(obj, dims = 1:pc)
+  obj <- FindClusters(obj, resolution = resolution)
+  obj <- RunUMAP(obj, dims = 1:pc)
+  values$obj <- obj
+  values$umapped_obj <- obj
+}
 
-create_metadata_UMAP <- function(obj, pc, resolution, values) {
+create_metadata_UMAP <- function(obj, values) {
   tryCatch(
     {
-      obj <- FindNeighbors(obj, dims = 1:pc)
-      obj <- FindClusters(obj, resolution = resolution)
-      obj <- RunUMAP(obj, dims = 1:pc)
       colors <- rainbow(length(levels(Idents(obj))))
       umap <- DimPlot(obj, pt.size = .1, label = FALSE, label.size = 4, reduction = "umap", cols = colors)
       # umap <- DimPlot(obj, pt.size = .1, label = FALSE, label.size = 4, group.by = col, reduction = "umap", cols=colors)
       remove_modal_spinner()
-      values$obj <- obj
       values$umap <- umap
-      values$umapped_obj <- obj
       return(umap)
     },
     error = function(err) {
