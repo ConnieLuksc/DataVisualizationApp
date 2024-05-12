@@ -29,6 +29,8 @@ server <- function(input, output, session) {
   updateFilter <- function(enable = TRUE) {
     if (enable) {
       obj <- load_seurat_obj(input$file$datapath)
+      obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day0_BMC_STIA_Macs"]] <- NULL
+      obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day7_BMC_STIA_Macs"]] <- NULL
       obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
       values$filter_violinPlot <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
       output$filter_violinPlot <- renderPlot(values$filter_violinPlot)
@@ -54,19 +56,19 @@ server <- function(input, output, session) {
   # Filter
   observeEvent(input$filter, {
     tryCatch(
-    {
-      obj <- subset(values$obj, subset = nFeature_RNA > input$feature_lower &
-        nFeature_RNA < input$feature_upper &
-        nCount_RNA > input$count_lower &
-        nCount_RNA < input$count_upper &
-        percent.mt > input$percent_lower &
-        percent.mt < input$percent_upper)
-      values$filter_violinPlot <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
-      output$filter_violinPlot <- renderPlot(values$filter_violinPlot)
-      values$feature_scatter <- create_feature_scatter(obj)
-      output$feature_scatter <- renderPlot(values$feature_scatter)
-      values$obj <- obj
-    },
+      {
+        obj <- subset(values$obj, subset = nFeature_RNA > input$feature_lower &
+          nFeature_RNA < input$feature_upper &
+          nCount_RNA > input$count_lower &
+          nCount_RNA < input$count_upper &
+          percent.mt > input$percent_lower &
+          percent.mt < input$percent_upper)
+        values$filter_violinPlot <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
+        output$filter_violinPlot <- renderPlot(values$filter_violinPlot)
+        values$feature_scatter <- create_feature_scatter(obj)
+        output$feature_scatter <- renderPlot(values$feature_scatter)
+        values$obj <- obj
+      },
       error = function(e) {
         # Error handling
         showModal(modalDialog(
@@ -87,32 +89,32 @@ server <- function(input, output, session) {
   observeEvent(input$normalize, {
     # browser()
     tryCatch(
-    {
-      withProgress(message = "Normalization in progress...", value = 0, {
-        obj <- values$obj
-        obj <- normalizeData(obj, input$normalization_method, input$parameter)
-        obj <- runPCA(obj, input$num_pcs)
-        variableFeatures <- findVariableFeatures(obj, input$num_features)
-        obj <- variableFeatures$object
-        top10 <- variableFeatures$top10
+      {
+        withProgress(message = "Normalization in progress...", value = 0, {
+          obj <- values$obj
+          obj <- normalizeData(obj, input$normalization_method, input$using_log, input$norm_parameter, input$sct_parameter)
+          obj <- runPCA(obj, input$num_pcs)
+          variableFeatures <- findVariableFeatures(obj, input$num_features)
+          obj <- variableFeatures$object
+          top10 <- variableFeatures$top10
 
-        values$obj <- obj
+          values$obj <- obj
 
-        values$elbowPlot <- {
-          ElbowPlot(obj, ndims = input$num_pcs)
-        }
-        output$elbowPlot <- renderPlot(values$elbowPlot)
-        values$feature_selection <- {
-          plotVariableFeatures(obj, top10)
-        }
-        output$feature_selection <- renderPlot(values$feature_selection)
+          values$elbowPlot <- {
+            ElbowPlot(obj, ndims = input$num_pcs)
+          }
+          output$elbowPlot <- renderPlot(values$elbowPlot)
+          values$feature_selection <- {
+            plotVariableFeatures(obj, top10)
+          }
+          output$feature_selection <- renderPlot(values$feature_selection)
 
-        for (i in 1:10) {
-          Sys.sleep(0.5)
-          incProgress(1 / 10, detail = "Normalization complete! Please go to Clustering tab to visualize data")
-        }
-      })
-    },
+          for (i in 1:10) {
+            Sys.sleep(0.5)
+            incProgress(1 / 10, detail = "Normalization complete! Please go to Clustering tab to visualize data")
+          }
+        })
+      },
       error = function(e) {
         showModal(modalDialog(
           title = "Error",
@@ -183,9 +185,9 @@ server <- function(input, output, session) {
       })
 
       output$heatmapPlot <- renderPlot(
-      {
-        create_heatmap(values)
-      },
+        {
+          create_heatmap(values)
+        },
         height = function() {
           350
         },
@@ -196,16 +198,16 @@ server <- function(input, output, session) {
 
 
       output$cluster_cell_counts <- DT::renderDataTable(
-      {
-        cluster_ids <- Idents(values$obj)
-        values$cluster_cell_counts <- table(cluster_ids)
-        values$cluster_num <- length(names(values$cluster_cell_counts))
-        data.frame(
-          Cluster = names(values$cluster_cell_counts),
-          # Annotation = values$annotation_show,
-          Count = as.numeric(values$cluster_cell_counts)
-        )
-      },
+        {
+          cluster_ids <- Idents(values$obj)
+          values$cluster_cell_counts <- table(cluster_ids)
+          values$cluster_num <- length(names(values$cluster_cell_counts))
+          data.frame(
+            Cluster = names(values$cluster_cell_counts),
+            # Annotation = values$annotation_show,
+            Count = as.numeric(values$cluster_cell_counts)
+          )
+        },
         options = list(paging = FALSE),
         rownames = FALSE
       )
@@ -312,172 +314,175 @@ server <- function(input, output, session) {
 
       lapply(seq_along(current_saved_list), function(key) {
         output[[paste0("verbatim_output_", key)]] <- DT::renderDataTable(
-        {
-          data.frame(
-            Cluster = names(current_saved_list[[key]]$cluster),
-            Count = as.numeric(current_saved_list[[key]]$cluster)
-          )
-        },
+          {
+            data.frame(
+              Cluster = names(current_saved_list[[key]]$cluster),
+              Count = as.numeric(current_saved_list[[key]]$cluster)
+            )
+          },
           options = list(paging = FALSE),
           rownames = FALSE
         )
 
-        observeEvent(input[[paste0("button_", key)]], {
-          loaded_seurat <- load_seurat_obj(current_saved_list[[key]]$file)
-          if (!is.vector(loaded_seurat)) {
-            # values$obj <- loaded_seurat # nolint
-            output[[paste0("pc1", values$count)]] <- renderText({
-              paste("PC: ", current_saved_list[[key]]$pc)
-            })
+        observeEvent(input[[paste0("button_", key)]],
+          {
+            loaded_seurat <- load_seurat_obj(current_saved_list[[key]]$file)
+            if (!is.vector(loaded_seurat)) {
+              # values$obj <- loaded_seurat # nolint
+              output[[paste0("pc1", values$count)]] <- renderText({
+                paste("PC: ", current_saved_list[[key]]$pc)
+              })
 
-            output[[paste0("resolution1", values$count)]] <- renderText({
-              paste("Resolution: ", current_saved_list[[key]]$resolution)
-            })
-            values$gene_1 <- current_saved_list[[key]]$gene_1
-            output[[paste0("gene1", values$count)]] <- renderText({
-              paste("Gene1: ", values$gene_1)
-            })
-            values$gene_2 <- current_saved_list[[key]]$gene_2
-            output[[paste0("gene2", values$count)]] <- renderText({
-              paste("Gene2: ", values$gene_2)
-            })
-            values$gene_3 <- current_saved_list[[key]]$gene_3
-            output[[paste0("gene3", values$count)]] <- renderText({
-              paste("Gene3: ", values$gene_3)
-            })
-            values$gene_4 <- current_saved_list[[key]]$gene_4
-            output[[paste0("gene4", values$count)]] <- renderText({
-              paste("Gene4: ", values$gene_4)
-            })
-            values$annotations <- current_saved_list[[key]]$annotation
-            output[[paste0("annotation1", values$count)]] <- renderText({
-              paste("Annotation: ", values$annotations)
-            })
-            output[[paste0("umap", values$count)]] <- renderPlot(current_saved_list[[key]]$umap) # nolint
-            output[[paste0("violinPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$violin) # nolint
-            output[[paste0("featurePlot_1", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_1) # nolint
-            output[[paste0("violinPlotGene_1", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_1) # nolint
-            output[[paste0("featurePlot_2", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_2) # nolint
-            output[[paste0("violinPlotGene_2", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_2) # nolint
-            output[[paste0("featurePlot_3", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_3) # nolint
-            output[[paste0("violinPlotGene_3", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_3) # nolint
-            output[[paste0("featurePlot_4", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_4) # nolint
-            output[[paste0("violinPlotGene_4", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_4) # nolint
-            output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
-            output[[paste0("heatmapPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$heatmap)
-            output[[paste0("mdsPlot", values$count)]] <- renderPlot({
-              plotMDS(current_saved_list[[key]]$plotmds, col = current_saved_list[[key]]$mds_color, pch = 20, cex = 2)
-              title("MDS Plot")
-              legend("topright", legend = colnames(current_saved_list[[key]]$mds_legend), col = current_saved_list[[key]]$mds_color, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
-            })
-            output[[paste0("normalization", values$count)]] <- renderText({
-              paste("Normalization Method: ", input$normalization_method)
-            })
-            output[[paste0("normalization_parameter", values$count)]] <- renderText({
-              paste("Normalization Parameter: ", input$parameter)
-            })
-            output[[paste0("PC_value", values$count)]] <- renderText({
-              paste("PC value: ", input$num_pcs)
-            })
-            output[[paste0("Number_of_Variable_Features", values$count)]] <- renderText({
-              paste("Number of Variable Features: ", input$num_features)
-            })
-            output[[paste0("umap_annotation", values$count)]] <- renderPlot(current_saved_list[[key]]$annotation_umap) # nolint
-            output[[paste0("textoutput", values$count)]] <- renderText({
-              return("Current #Cells/Cluster")
-            })
-            output[[paste0("cluster_cell_counts", values$count)]] <- DT::renderDataTable( # nolint
-            {
-              data.frame(
-                Cluster = names(current_saved_list[[key]]$cluster),
-                Count = as.numeric(current_saved_list[[key]]$cluster)
-              )
-            },
-              options = list(paging = FALSE),
-              rownames = FALSE
-            )
-            insertTab(
-              inputId = "main_tabs",
-              tabPanel(
-                paste("Tab", values$count),
-                fluidRow(
-                  column(
-                    2,
-                    verbatimTextOutput(paste0("pc1", values$count)),
-                    verbatimTextOutput(paste0("resolution1", values$count)),
-                    verbatimTextOutput(paste0("gene1", values$count)),
-                    verbatimTextOutput(paste0("gene2", values$count)),
-                    verbatimTextOutput(paste0("gene3", values$count)),
-                    verbatimTextOutput(paste0("gene4", values$count)),
-                    verbatimTextOutput(paste0("annotation1", values$count)),
-                    verbatimTextOutput(paste0("normalization", values$count)),
-                    verbatimTextOutput(paste0("normalization_parameter", values$count)),
-                    verbatimTextOutput(paste0("PC_value", values$count)),
-                    verbatimTextOutput(paste0("Number_of_Variable_Features", values$count)),
-                  ),
-                  column(
-                    8,
-                    fluidRow(
-                      column(
-                        5,
-                        plotOutput(paste0("violinPlot", values$count))
-                      ),
-                      column(
-                        7,
-                        plotOutput(paste0("umap", values$count))
-                      ),
-                    ),
-                    fluidRow(
-                      column(3, plotOutput(paste0("featurePlot_1", values$count), height = "225px")),
-                      column(3, plotOutput(paste0("featurePlot_2", values$count), height = "225px")),
-                      column(3, plotOutput(paste0("featurePlot_3", values$count), height = "225px")),
-                      column(3, plotOutput(paste0("featurePlot_4", values$count), height = "225px"))
-                    ),
-                    fluidRow(
-                      column(3, plotOutput(paste0("violinPlotGene_1", values$count), height = "225px")),
-                      column(3, plotOutput(paste0("violinPlotGene_2", values$count), height = "225px")),
-                      column(3, plotOutput(paste0("violinPlotGene_3", values$count), height = "225px")),
-                      column(3, plotOutput(paste0("violinPlotGene_4", values$count), height = "225px"))
-                    ),
-                    fluidRow(
-                      column(
-                        6,
-                        plotOutput(paste0("heatmapPlot", values$count))
-                      ),
-                      column(
-                        6,
-                        plotOutput(paste0("mdsPlot", values$count))
-                      )
-                    ),
-                    fluidRow(
-                      column(
-                        6,
-                        plotOutput(paste0("umap_annotation", values$count))
-                      ),
-                      column(
-                        6,
-                        uiOutput(paste0("sankeyPlot", values$count))
-                      )
-                    )
-                  ),
-                  column(
-                    width = 2,
-                    style = "overflow-y: scroll; max-height: 600px;",
-                    textOutput(paste0("textoutput", values$count)),
-                    DT::dataTableOutput(
-                      paste0("cluster_cell_counts", values$count)
-                    ),
+              output[[paste0("resolution1", values$count)]] <- renderText({
+                paste("Resolution: ", current_saved_list[[key]]$resolution)
+              })
+              values$gene_1 <- current_saved_list[[key]]$gene_1
+              output[[paste0("gene1", values$count)]] <- renderText({
+                paste("Gene1: ", values$gene_1)
+              })
+              values$gene_2 <- current_saved_list[[key]]$gene_2
+              output[[paste0("gene2", values$count)]] <- renderText({
+                paste("Gene2: ", values$gene_2)
+              })
+              values$gene_3 <- current_saved_list[[key]]$gene_3
+              output[[paste0("gene3", values$count)]] <- renderText({
+                paste("Gene3: ", values$gene_3)
+              })
+              values$gene_4 <- current_saved_list[[key]]$gene_4
+              output[[paste0("gene4", values$count)]] <- renderText({
+                paste("Gene4: ", values$gene_4)
+              })
+              values$annotations <- current_saved_list[[key]]$annotation
+              output[[paste0("annotation1", values$count)]] <- renderText({
+                paste("Annotation: ", values$annotations)
+              })
+              output[[paste0("umap", values$count)]] <- renderPlot(current_saved_list[[key]]$umap) # nolint
+              output[[paste0("violinPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$violin) # nolint
+              output[[paste0("featurePlot_1", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_1) # nolint
+              output[[paste0("violinPlotGene_1", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_1) # nolint
+              output[[paste0("featurePlot_2", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_2) # nolint
+              output[[paste0("violinPlotGene_2", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_2) # nolint
+              output[[paste0("featurePlot_3", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_3) # nolint
+              output[[paste0("violinPlotGene_3", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_3) # nolint
+              output[[paste0("featurePlot_4", values$count)]] <- renderPlot(current_saved_list[[key]]$featurePlot_4) # nolint
+              output[[paste0("violinPlotGene_4", values$count)]] <- renderPlot(current_saved_list[[key]]$violinPlotGene_4) # nolint
+              output[[paste0("sankeyPlot", values$count)]] <- renderUI(current_saved_list[[key]]$sankey) # nolint
+              output[[paste0("heatmapPlot", values$count)]] <- renderPlot(current_saved_list[[key]]$heatmap)
+              output[[paste0("mdsPlot", values$count)]] <- renderPlot({
+                plotMDS(current_saved_list[[key]]$plotmds, col = current_saved_list[[key]]$mds_color, pch = 20, cex = 2)
+                title("MDS Plot")
+                legend("topright", legend = colnames(current_saved_list[[key]]$mds_legend), col = current_saved_list[[key]]$mds_color, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
+              })
+              output[[paste0("normalization", values$count)]] <- renderText({
+                paste("Normalization Method: ", input$normalization_method)
+              })
+              output[[paste0("normalization_parameter", values$count)]] <- renderText({
+                paste("Normalization Parameter: ", input$parameter)
+              })
+              output[[paste0("PC_value", values$count)]] <- renderText({
+                paste("PC value: ", input$num_pcs)
+              })
+              output[[paste0("Number_of_Variable_Features", values$count)]] <- renderText({
+                paste("Number of Variable Features: ", input$num_features)
+              })
+              output[[paste0("umap_annotation", values$count)]] <- renderPlot(current_saved_list[[key]]$annotation_umap) # nolint
+              output[[paste0("textoutput", values$count)]] <- renderText({
+                return("Current #Cells/Cluster")
+              })
+              output[[paste0("cluster_cell_counts", values$count)]] <- DT::renderDataTable( # nolint
+                {
+                  data.frame(
+                    Cluster = names(current_saved_list[[key]]$cluster),
+                    Count = as.numeric(current_saved_list[[key]]$cluster)
                   )
-                )
-              ),
-              select = TRUE,
-            )
-            shinyjs::runjs('$("#pc1").prop("disabled", true);')
-            shinyjs::runjs('$("#gene1").prop("disabled", true);')
-            shinyjs::runjs('$("#resolution1").prop("disabled", true);')
-            values$count <- values$count + 1
-          }
-        }, ignoreInit = TRUE)
+                },
+                options = list(paging = FALSE),
+                rownames = FALSE
+              )
+              insertTab(
+                inputId = "main_tabs",
+                tabPanel(
+                  paste("Tab", values$count),
+                  fluidRow(
+                    column(
+                      2,
+                      verbatimTextOutput(paste0("pc1", values$count)),
+                      verbatimTextOutput(paste0("resolution1", values$count)),
+                      verbatimTextOutput(paste0("gene1", values$count)),
+                      verbatimTextOutput(paste0("gene2", values$count)),
+                      verbatimTextOutput(paste0("gene3", values$count)),
+                      verbatimTextOutput(paste0("gene4", values$count)),
+                      verbatimTextOutput(paste0("annotation1", values$count)),
+                      verbatimTextOutput(paste0("normalization", values$count)),
+                      verbatimTextOutput(paste0("normalization_parameter", values$count)),
+                      verbatimTextOutput(paste0("PC_value", values$count)),
+                      verbatimTextOutput(paste0("Number_of_Variable_Features", values$count)),
+                    ),
+                    column(
+                      8,
+                      fluidRow(
+                        column(
+                          5,
+                          plotOutput(paste0("violinPlot", values$count))
+                        ),
+                        column(
+                          7,
+                          plotOutput(paste0("umap", values$count))
+                        ),
+                      ),
+                      fluidRow(
+                        column(3, plotOutput(paste0("featurePlot_1", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("featurePlot_2", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("featurePlot_3", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("featurePlot_4", values$count), height = "225px"))
+                      ),
+                      fluidRow(
+                        column(3, plotOutput(paste0("violinPlotGene_1", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("violinPlotGene_2", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("violinPlotGene_3", values$count), height = "225px")),
+                        column(3, plotOutput(paste0("violinPlotGene_4", values$count), height = "225px"))
+                      ),
+                      fluidRow(
+                        column(
+                          6,
+                          plotOutput(paste0("heatmapPlot", values$count))
+                        ),
+                        column(
+                          6,
+                          plotOutput(paste0("mdsPlot", values$count))
+                        )
+                      ),
+                      fluidRow(
+                        column(
+                          6,
+                          plotOutput(paste0("umap_annotation", values$count))
+                        ),
+                        column(
+                          6,
+                          uiOutput(paste0("sankeyPlot", values$count))
+                        )
+                      )
+                    ),
+                    column(
+                      width = 2,
+                      style = "overflow-y: scroll; max-height: 600px;",
+                      textOutput(paste0("textoutput", values$count)),
+                      DT::dataTableOutput(
+                        paste0("cluster_cell_counts", values$count)
+                      ),
+                    )
+                  )
+                ),
+                select = TRUE,
+              )
+              shinyjs::runjs('$("#pc1").prop("disabled", true);')
+              shinyjs::runjs('$("#gene1").prop("disabled", true);')
+              shinyjs::runjs('$("#resolution1").prop("disabled", true);')
+              values$count <- values$count + 1
+            }
+          },
+          ignoreInit = TRUE
+        )
       })
     }
   })
