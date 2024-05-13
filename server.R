@@ -421,6 +421,7 @@ server <- function(input, output, session) {
                       verbatimTextOutput(paste0("normalization_parameter", values$count)),
                       verbatimTextOutput(paste0("PC_value", values$count)),
                       verbatimTextOutput(paste0("Number_of_Variable_Features", values$count)),
+                      downloadButton("download_r", "Download R object")
                     ),
                     column(
                       8,
@@ -653,6 +654,15 @@ server <- function(input, output, session) {
       print(values$featurePlots[["featurePlot_4"]])
       print(values$violinPlotGenes[["violinPlotGene_4"]])
       dev.off()
+    }
+  )
+
+  output$download_r <- downloadHandler(
+    filename = function() {
+      "seurat_obj.rds"
+    },
+    content = function(file) {
+      saveRDS(values$obj, file)
     }
   )
 
