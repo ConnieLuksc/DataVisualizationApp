@@ -44,6 +44,7 @@ server <- function(input, output, session) {
       updateNumericInput(session, "percent_upper", value = max(obj@meta.data[["percent.mt"]]))
       updateNumericInput(session, "percent_lower", value = min(obj@meta.data[["percent.mt"]]))
       values$obj <- obj
+      values$original_data <- obj
     } else {
       values$obj <- NULL
     }
@@ -64,11 +65,18 @@ server <- function(input, output, session) {
           nCount_RNA < input$count_upper &
           percent.mt > input$percent_lower &
           percent.mt < input$percent_upper)
-        values$filter_violinPlot <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
+        original_data <- subset(values$original_data, subset = nFeature_RNA > input$feature_lower &
+          nFeature_RNA < input$feature_upper &
+          nCount_RNA > input$count_lower &
+          nCount_RNA < input$count_upper &
+          percent.mt > input$percent_lower &
+          percent.mt < input$percent_upper)
+        values$filter_violinPlot <- VlnPlot(original_data, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
         output$filter_violinPlot <- renderPlot(values$filter_violinPlot)
         values$feature_scatter <- create_feature_scatter(obj)
         output$feature_scatter <- renderPlot(values$feature_scatter)
         values$obj <- obj
+        values$original_data <- original_data
       },
       error = function(e) {
         # Error handling
