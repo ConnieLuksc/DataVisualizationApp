@@ -624,14 +624,25 @@ server <- function(input, output, session) {
 
   output$download_clustering <- downloadHandler(
     filename = function() {
-      "plots_clustering.pdf"
+      paste("plots_clustering_", Sys.Date(), ".pdf", sep = "")
     },
     content = function(file) {
       pdf(file, onefile = TRUE, width = 15, height = 9)
-      print(values$violinPlot)
-      print(values$umap)
+      plots$violinPlot <- values$violinPlot +
+        theme(plot.margin = unit(c(2, 2, 2, 2), "cm"))
+      print(plots$violinPlot)
+      grid.text(paste("PC: ", input$pc), x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
+      grid.text(paste("Resolution: ", input$resolution), x = 0.5, y = 0.03, just = "bottom", gp = gpar(fontsize = 15))
+
+      plots$umap <- values$umap +
+        theme(plot.margin = unit(c(2, 2, 2, 2), "cm"))
+      print(plots$umap)
+      grid.text(paste("PC: ", input$pc), x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
+      grid.text(paste("Resolution: ", input$resolution), x = 0.5, y = 0.03, just = "bottom", gp = gpar(fontsize = 15))
+
       print(values$umap_annotation)
-      print(plot(values$mds))
+      # print(values$mds)
+      grid.newpage()
       print(values$heatmap)
       print(values$featurePlots[["featurePlot_1"]])
       print(values$violinPlotGenes[["violinPlotGene_1"]])
