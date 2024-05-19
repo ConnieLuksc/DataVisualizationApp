@@ -28,10 +28,34 @@ server <- function(input, output, session) {
 
   updateFilter <- function(enable = TRUE) {
     if (enable) {
-      obj <- load_seurat_obj(input$file$datapath)
+      # Load the Seurat object from the RDS file
+      tmp <- load_seurat_obj(input$file$datapath)
+
+      # Extract the specific counts layer
+      counts_layer <- tmp@assays[["RNA"]]@layers[["counts.Gene Expression.Day0_BMC_STIA_Macs"]]
+
+      # Set min.cells as total number of cells in the sample * 0.01
+      min.cells <- (ncol(counts_layer) * 0.01) %>% round()
+
+      # Create a new Seurat object using the extracted layer
+      obj <- CreateSeuratObject(
+        counts = counts_layer,
+        min.cells = min.cells,
+        min.features = 200
+      )
+
+      # Add ADT data to the new Seurat object
+      # Ensure that the 'Antibody Capture' data is present in the original object
+      if ("Antibody Capture" %in% names(tmp@assays)) {
+        adt_data <- tmp@assays[["Antibody Capture"]]@counts
+        obj[["ADT"]] <- CreateAssayObject(adt_data[, colnames(obj)])
+      } else {
+        warning("Antibody Capture data not found in the loaded Seurat object.")
+      }
+
       obj$group <- "all"
-      obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day0_BMC_STIA_Macs"]] <- NULL
-      obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day7_BMC_STIA_Macs"]] <- NULL
+      # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day0_BMC_STIA_Macs"]] <- NULL
+      # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day7_BMC_STIA_Macs"]] <- NULL
       obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
       values$filter_violinPlot <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
       output$filter_violinPlot <- renderPlot(values$filter_violinPlot)
