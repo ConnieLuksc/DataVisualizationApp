@@ -25,6 +25,14 @@ server <- function(input, output, session) {
     rep("NA", times = values$cluster_num)
   })
 
+  data <- reactiveVal()
+  observe({
+    req(input$file) 
+    data(readRDS(input$file$datapath))
+    updateSelectInput(session, "layerSelect",
+                      choices = names(data()@assays$RNA@layers))
+  })
+
 
   updateFilter <- function(enable = TRUE) {
     if (enable) {
@@ -43,16 +51,6 @@ server <- function(input, output, session) {
         min.cells = min.cells,
         min.features = 200
       )
-
-      # Add ADT data to the new Seurat object
-      # Ensure that the 'Antibody Capture' data is present in the original object
-      if ("Antibody Capture" %in% names(tmp@assays)) {
-        adt_data <- tmp@assays[["Antibody Capture"]]@counts
-        obj[["ADT"]] <- CreateAssayObject(adt_data[, colnames(obj)])
-      } else {
-        warning("Antibody Capture data not found in the loaded Seurat object.")
-      }
-
       obj$group <- "all"
       # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day0_BMC_STIA_Macs"]] <- NULL
       # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day7_BMC_STIA_Macs"]] <- NULL
