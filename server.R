@@ -208,11 +208,11 @@ server <- function(input, output, session) {
       })
 
       output$normalization <- renderText({
-        paste("Normalization Method: ", input$normalization_method)
+        input$normalization_method
       })
 
       output$normalization_parameter <- renderText({
-        paste("Normalization Parameter: ", input$parameter)
+        paste("Normalization Parameter: ", input$norm_parameter)
       })
 
       output$PC_value <- renderText({

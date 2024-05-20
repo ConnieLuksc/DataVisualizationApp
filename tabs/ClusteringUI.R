@@ -21,7 +21,7 @@ ClusteringUI <- function() {
           downloadButton("download_clustering", "Download"),
           verbatimTextOutput("normalization"),
           verbatimTextOutput("normalization_parameter"),
-          verbatimTextOutput("PC_value"),
+          # verbatimTextOutput("PC_value"),
           verbatimTextOutput("Number_of_Variable_Features")
 
         ),
