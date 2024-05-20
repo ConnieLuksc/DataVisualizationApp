@@ -48,40 +48,40 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$layerSelect, {
-        req(input$file, input$layerSelect)
-        tmp <- data()
-        
-        if (input$layerSelect != "" && input$layerSelect != values$previous_selected_layer) {
-          # Extract the specific counts layer
-          values$previous_selected_layer <- input$layerSelect
-          counts_layer <- tmp@assays[["RNA"]]@layers[[input$layerSelect]]
+    req(input$file, input$layerSelect)
+    tmp <- data()
 
-          # Set min.cells as total number of cells in the sample * 0.01
-          min.cells <- (ncol(counts_layer) * 0.01) %>% round()
+    if (input$layerSelect != "" && input$layerSelect != values$previous_selected_layer) {
+      # Extract the specific counts layer
+      values$previous_selected_layer <- input$layerSelect
+      counts_layer <- tmp@assays[["RNA"]]@layers[[input$layerSelect]]
 
-          # Create a new Seurat object using the extracted layer
-          obj <- CreateSeuratObject(
-            counts = counts_layer,
-            min.cells = min.cells,
-            min.features = 200
-          )
-          obj$group <- "all"
-          # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day0_BMC_STIA_Macs"]] <- NULL
-          # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day7_BMC_STIA_Macs"]] <- NULL
-          obj <- PercentageFeatureSet(obj, pattern = "^MT-", col.name = "percent.mt")
-          values$filter_violinPlot <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
-          output$filter_violinPlot <- renderPlot(values$filter_violinPlot)
-          values$feature_scatter <- create_feature_scatter(obj)
-          output$feature_scatter <- renderPlot(values$feature_scatter)
-          updateNumericInput(session, "feature_upper", value = max(obj@meta.data[["nFeature_RNA"]]))
-          updateNumericInput(session, "feature_lower", value = min(obj@meta.data[["nFeature_RNA"]]))
-          updateNumericInput(session, "count_upper", value = max(obj@meta.data[["nCount_RNA"]]))
-          updateNumericInput(session, "count_lower", value = min(obj@meta.data[["nCount_RNA"]]))
-          updateNumericInput(session, "percent_upper", value = max(obj@meta.data[["percent.mt"]]))
-          updateNumericInput(session, "percent_lower", value = min(obj@meta.data[["percent.mt"]]))
-          values$obj <- obj
-        }
-      })
+      # Set min.cells as total number of cells in the sample * 0.01
+      min.cells <- (ncol(counts_layer) * 0.01) %>% round()
+
+      # Create a new Seurat object using the extracted layer
+      obj <- CreateSeuratObject(
+        counts = counts_layer,
+        min.cells = min.cells,
+        min.features = 200
+      )
+      obj$group <- "all"
+      # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day0_BMC_STIA_Macs"]] <- NULL
+      # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day7_BMC_STIA_Macs"]] <- NULL
+      obj <- PercentageFeatureSet(obj, pattern = "^MT-|^MT.|^mt-", col.name = "percent.mt")
+      values$filter_violinPlot <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, pt.size = 0)
+      output$filter_violinPlot <- renderPlot(values$filter_violinPlot)
+      values$feature_scatter <- create_feature_scatter(obj)
+      output$feature_scatter <- renderPlot(values$feature_scatter)
+      updateNumericInput(session, "feature_upper", value = max(obj@meta.data[["nFeature_RNA"]]))
+      updateNumericInput(session, "feature_lower", value = min(obj@meta.data[["nFeature_RNA"]]))
+      updateNumericInput(session, "count_upper", value = max(obj@meta.data[["nCount_RNA"]]))
+      updateNumericInput(session, "count_lower", value = min(obj@meta.data[["nCount_RNA"]]))
+      updateNumericInput(session, "percent_upper", value = max(obj@meta.data[["percent.mt"]]))
+      updateNumericInput(session, "percent_lower", value = min(obj@meta.data[["percent.mt"]]))
+      values$obj <- obj
+    }
+  })
 
   observe({
     updateUI(!is.null(input$file))
