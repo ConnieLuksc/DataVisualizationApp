@@ -665,19 +665,30 @@ server <- function(input, output, session) {
     content = function(file) {
       pdf(file, onefile = TRUE, width = 15, height = 9)
       plots$violinPlot <- values$violinPlot +
-        theme(plot.margin = unit(c(2, 2, 2, 2), "cm"))
+        theme(
+          plot.margin = unit(c(2, 2, 2, 2), "cm"),
+          plot.title = element_text(hjust = 0.5))
       print(plots$violinPlot)
       grid.text(paste("PC: ", input$pc), x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
       grid.text(paste("Resolution: ", input$resolution), x = 0.5, y = 0.03, just = "bottom", gp = gpar(fontsize = 15))
 
       plots$umap <- values$umap +
-        theme(plot.margin = unit(c(2, 2, 2, 2), "cm"))
+        ggtitle("UMAP") +
+        theme(
+          plot.margin = unit(c(2, 2, 2, 2), "cm"),
+          plot.title = element_text(hjust = 0.5))
       print(plots$umap)
       grid.text(paste("PC: ", input$pc), x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
       grid.text(paste("Resolution: ", input$resolution), x = 0.5, y = 0.03, just = "bottom", gp = gpar(fontsize = 15))
 
-      print(values$umap_annotation)
-      # print(values$mds)
+      plots$umap_annotation <- values$umap_annotation + 
+        ggtitle("UMAP Annotations") + theme(plot.title = element_text(hjust = 0.5))
+      print(plots$umap_annotation)
+
+      plotMDS(values$mds, col = values$mds_color, pch = 20, cex = 2)
+      title("MDS Plot")
+      legend("topright", legend = colnames(values$mds_legend), col = values$mds_color, pch = 20, cex = 0.8, pt.cex = 0.8, title = "Group")
+
       grid.newpage()
       print(values$heatmap)
       print(values$featurePlots[["featurePlot_1"]])

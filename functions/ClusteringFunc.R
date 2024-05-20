@@ -269,57 +269,34 @@ create_sankey_plot <- function(obj, values, pc, resolution, annotation, cluster_
 
 create_heatmap <- function(values) {
   req(values$obj)
-  # Obtain variable genes
   variable_genes <- Seurat::VariableFeatures(values$obj)
   if (is.null(variable_genes) || length(variable_genes) == 0) {
     stop("Variable features not found or the list is empty.")
   }
-  # Aggregate expression data for variable genes
   avg_expression <- AggregateExpression(values$obj, features = variable_genes, return.seurat = TRUE)
   data_matrix <- GetAssayData(avg_expression, slot = "data")
   if (!is.matrix(data_matrix) || !is.numeric(data_matrix)) {
     stop("The data matrix is not numeric.")
   }
-  # Determine clusters based on the dynamic input
   cluster_assignments <- Idents(values$obj)
-  # Find all unique cluster IDs
   all_clusters <- unique(cluster_assignments)
   all_clusters <- sort(all_clusters)
-  print("all_clusters")
-  print(all_clusters)
   colnames(data_matrix) <- gsub("^g", "", colnames(data_matrix))
-  print(paste("Unique cluster IDs:", paste(all_clusters, collapse = ", ")))
-  print(paste("Column names in data_matrix:", paste(colnames(data_matrix), collapse = ", ")))
-  # Check that data_matrix is not empty after potential subsetting (if needed)
   if (ncol(data_matrix) == 0) {
     stop("The data matrix has no columns.")
   }
-  # Calculate the standard deviation for each gene and filter out the genes with zero standard deviation
   non_zero_variance_genes <- apply(data_matrix, 1, var, na.rm = TRUE) > 0
   data_matrix <- data_matrix[non_zero_variance_genes, ]
-  # Check that data_matrix is not empty after filtering for non-zero variance genes
   if (nrow(data_matrix) == 0) {
     stop("No variable genes found with non-zero variance.")
   }
-
-  # cluster_colors <- grDevices::rainbow(length(all_clusters))
   set.seed(123)
   colors <- rainbow(length(all_clusters))
   names(colors) <- all_clusters
   cluster_annotation <- data.frame(Cluster = colnames(data_matrix))
   rownames(cluster_annotation) <- colnames(data_matrix)
-  print("cluster_annotation")
-  print(head(cluster_annotation))
   annotation_colors <- list(Cluster = colors)
-
-
-  # Calculate the correlation matrix on the subsetted data, handling any remaining NAs
   correlation_matrix <- cor(data_matrix, use = "pairwise.complete.obs")
-
-  print("Inspecting first few rows of correlation_matrix:")
-  print(head(correlation_matrix))
-  # Plot the heatmap
-
   values$heatmap <- pheatmap(correlation_matrix,
     clustering_distance_rows = "euclidean",
     clustering_distance_cols = "euclidean",
