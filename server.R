@@ -115,7 +115,7 @@ server <- function(input, output, session) {
       {
         withProgress(message = "Normalization in progress...", value = 0, {
           obj <- values$obj
-          obj <- normalizeData(obj, input$normalization_method, input$using_log, input$norm_parameter, input$sct_parameter)
+          obj <- normalizeData(obj, input$normalization_method, input$using_log, input$norm_parameter, input$sct_parameter_1, input$sct_parameter_2)
           obj <- runPCA(obj, input$num_pcs)
           variableFeatures <- findVariableFeatures(obj, input$num_features)
           obj <- variableFeatures$object
