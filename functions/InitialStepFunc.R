@@ -25,12 +25,12 @@ library(gridExtra)
 library(grid)
 
 
-normalizeData <- function(obj, method, using_log, norm_parameter = NULL, sct_parameter = NULL) {
+normalizeData <- function(obj, method, using_log, norm_parameter = 10000, sct_parameter_1 = 5000, sct_parameter_2 = 3000) {
     if (method == "sctransform") {
-        if (using_log) {
-            obj <- NormalizeData(obj, normalization_method = "LogNormalize")
+        if (using_log == "with") {
+            obj <- NormalizeData(obj, normalization_method = "LogNormalize", scale.factor = norm_parameter)
         }
-        obj <- SCTransform(obj, ncells = sct_parameter, vars.to.regress = "percent.mt", verbose = FALSE)
+        obj <- SCTransform(obj, ncells = sct_parameter_1, variable.features.n = sct_parameter_2, vars.to.regress = "percent.mt", verbose = FALSE)
     } else {
         obj <- NormalizeData(obj, normalization_method = method, scale.factor = norm_parameter)
         obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)

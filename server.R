@@ -667,7 +667,8 @@ server <- function(input, output, session) {
       plots$violinPlot <- values$violinPlot +
         theme(
           plot.margin = unit(c(2, 2, 2, 2), "cm"),
-          plot.title = element_text(hjust = 0.5))
+          plot.title = element_text(hjust = 0.5)
+        )
       print(plots$violinPlot)
       grid.text(paste("PC: ", input$pc), x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
       grid.text(paste("Resolution: ", input$resolution), x = 0.5, y = 0.03, just = "bottom", gp = gpar(fontsize = 15))
@@ -676,12 +677,13 @@ server <- function(input, output, session) {
         ggtitle("UMAP") +
         theme(
           plot.margin = unit(c(2, 2, 2, 2), "cm"),
-          plot.title = element_text(hjust = 0.5))
+          plot.title = element_text(hjust = 0.5)
+        )
       print(plots$umap)
       grid.text(paste("PC: ", input$pc), x = 0.5, y = 0.05, just = "bottom", gp = gpar(fontsize = 15))
       grid.text(paste("Resolution: ", input$resolution), x = 0.5, y = 0.03, just = "bottom", gp = gpar(fontsize = 15))
 
-      plots$umap_annotation <- values$umap_annotation + 
+      plots$umap_annotation <- values$umap_annotation +
         ggtitle("UMAP Annotations") + theme(plot.title = element_text(hjust = 0.5))
       print(plots$umap_annotation)
 
