@@ -39,32 +39,7 @@ server <- function(input, output, session) {
 
   updateFilter <- function(enable = TRUE) {
     if (enable) {
-      # Load the Seurat object from the RDS file
-      tmp <- load_seurat_obj(input$file$datapath)
-      data(tmp)
-    } else {
-      values$obj <- NULL
-    }
-  }
-
-  observeEvent(input$layerSelect, {
-    req(input$file, input$layerSelect)
-    tmp <- data()
-
-    if (input$layerSelect != "" && input$layerSelect != values$previous_selected_layer) {
-      # Extract the specific counts layer
-      values$previous_selected_layer <- input$layerSelect
-      counts_layer <- tmp@assays[["RNA"]]@layers[[input$layerSelect]]
-
-      # Set min.cells as total number of cells in the sample * 0.01
-      min.cells <- (ncol(counts_layer) * 0.01) %>% round()
-
-      # Create a new Seurat object using the extracted layer
-      obj <- CreateSeuratObject(
-        counts = counts_layer,
-        min.cells = min.cells,
-        min.features = 200
-      )
+      obj <- load_seurat_obj(input$file$datapath)
       obj$group <- "all"
       # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day0_BMC_STIA_Macs"]] <- NULL
       # obj@assays[["RNA"]]@layers[["counts.Gene Expression.Day7_BMC_STIA_Macs"]] <- NULL
@@ -80,8 +55,12 @@ server <- function(input, output, session) {
       updateNumericInput(session, "percent_upper", value = max(obj@meta.data[["percent.mt"]]))
       updateNumericInput(session, "percent_lower", value = min(obj@meta.data[["percent.mt"]]))
       values$obj <- obj
+    } else {
+      values$obj <- NULL
     }
-  })
+  }
+
+
 
   observe({
     updateUI(!is.null(input$file))
@@ -455,8 +434,7 @@ server <- function(input, output, session) {
                       verbatimTextOutput(paste0("normalization", values$count)),
                       verbatimTextOutput(paste0("normalization_parameter", values$count)),
                       verbatimTextOutput(paste0("PC_value", values$count)),
-                      verbatimTextOutput(paste0("Number_of_Variable_Features", values$count)),
-                      downloadButton("download_r", "Download R object")
+                      verbatimTextOutput(paste0("Number_of_Variable_Features", values$count))
                     ),
                     column(
                       8,

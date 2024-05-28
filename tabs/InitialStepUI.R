@@ -6,7 +6,6 @@ InitialStepUI <- function() {
         2,
         helpText("Please upload RDS file without normalization and clustering"),
         fileInput("file", "Upload File", multiple = TRUE, accept = c(".rds")),
-        selectInput("layerSelect", "Select Sample", choices = NULL),
         fluidRow(
           column(6, numericInput("feature_upper", "nFeature_RNA", value = NA), style = "padding-right: 5px;"),
           column(6, numericInput("feature_lower", HTML("&nbsp;"), value = NA), style = "padding-left: 5px;")

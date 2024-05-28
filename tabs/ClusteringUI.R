@@ -19,6 +19,7 @@ ClusteringUI <- function() {
           actionButton("save", "Save", class = "save-btn"),
           actionButton("update", "Update", class = "update-btn"),
           downloadButton("download_clustering", "Download"),
+          downloadButton("download_r", "Download R object"),
           verbatimTextOutput("normalization"),
           verbatimTextOutput("normalization_parameter"),
           # verbatimTextOutput("PC_value"),
